@@ -30,7 +30,8 @@ def scan_attachments_for_apply(pool, migration_id, dir = os.path.join(config.dat
     with os.scandir(dir) as it:
         for entry in it:
             if entry.is_file():
-                pool.apply_async(migrate_attachment, args=(entry.path, migration_id))
+                pass
+                # pool.apply_async(migrate_attachment, args=(entry.path, migration_id))
             else:
                 scan_attachments_for_apply(pool, migration_id, dir = entry.path)
 
@@ -42,7 +43,8 @@ def scan_inline_for_apply(pool, migration_id, dir = os.path.join(config.data_dir
     with os.scandir(dir) as it:
         for entry in it:
             if entry.is_file():
-                pool.apply_async(migrate_inline, args=(entry.path, migration_id))
+                pass
+                # pool.apply_async(migrate_inline, args=(entry.path, migration_id))
             else:
                 scan_inline_for_apply(pool, migration_id, dir = entry.path)
 
