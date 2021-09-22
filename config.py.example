@@ -1,5 +1,6 @@
 data_dir = './data'
-thumb_dir = './lalala'
+thumb_dir = None # custom thumb dir instead of data_dir + "/thumbnail" (optional)
+dry_run = True # set this to False to let sdkdd operate on the database and move files, for realsies. running a dry run first before doing this is highly recommended on production instances.
 # database info
 database_host = 'localhost'
 database_dbname = ''

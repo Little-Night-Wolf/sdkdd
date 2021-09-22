@@ -20,7 +20,7 @@ def scan_files_for_apply(pool, migration_id, dir = os.path.join(config.data_dir,
             if entry.is_file():
                 pool.apply_async(migrate_file, args=(entry.path, migration_id))
             else:
-                scan_files_for_apply(pool, entry.path)
+                scan_files_for_apply(pool, migration_id, dir = entry.path)
 
 def scan_attachments_for_apply(pool, migration_id, dir = os.path.join(config.data_dir, 'attachments')):
     if not os.path.exists(os.path.join(config.data_dir, 'attachments')):
@@ -32,7 +32,7 @@ def scan_attachments_for_apply(pool, migration_id, dir = os.path.join(config.dat
             if entry.is_file():
                 pool.apply_async(migrate_attachment, args=(entry.path, migration_id))
             else:
-                scan_files_for_apply(pool, entry.path)
+                scan_attachments_for_apply(pool, migration_id, dir = entry.path)
 
 def scan_inline_for_apply(pool, migration_id, dir = os.path.join(config.data_dir, 'inline')):
     if not os.path.exists(os.path.join(config.data_dir, 'inline')):
@@ -44,7 +44,7 @@ def scan_inline_for_apply(pool, migration_id, dir = os.path.join(config.data_dir
             if entry.is_file():
                 pool.apply_async(migrate_inline, args=(entry.path, migration_id))
             else:
-                scan_files_for_apply(pool, entry.path)
+                scan_inline_for_apply(pool, migration_id, dir = entry.path)
 
 @click.group(cls=DefaultGroup, default='apply', default_if_no_args=True)
 def cli():
@@ -53,29 +53,32 @@ def cli():
 @cli.command()
 def apply():
     timestamp = int(time.time())
-    conn = psycopg2.connect(
-        host = config.database_host,
-        dbname = config.database_dbname,
-        user = config.database_user,
-        password = config.database_password,
-        port = 5432
-    )
-    cursor = conn.cursor()
-    cursor.execute(
-        f"""
-            CREATE TABLE sdkdd_migration_{timestamp} (
-                "old_location" text NOT NULL,
-                "new_location" text NOT NULL,
-                "ctime" numeric NOT NULL,
-                "mtime" numeric NOT NULL
-            );
-        """
-    )
-    # indexing locks up db writes, disabled for now
-    # cursor.execute("CREATE INDEX IF NOT EXISTS filepathidx ON posts((file->>'path'));")
-    conn.commit()
-    conn.close()
-
+    if (not config.dry_run):
+        conn = psycopg2.connect(
+            host = config.database_host,
+            dbname = config.database_dbname,
+            user = config.database_user,
+            password = config.database_password,
+            port = 5432
+        )
+        cursor = conn.cursor()
+        cursor.execute(
+            f"""
+                CREATE TABLE sdkdd_migration_{timestamp} (
+                    "old_location" text NOT NULL,
+                    "new_location" text NOT NULL,
+                    "ctime" numeric NOT NULL,
+                    "mtime" numeric NOT NULL
+                );
+            """
+        )
+        # indexing locks up db writes, disabled for now
+        # cursor.execute("CREATE INDEX IF NOT EXISTS filepathidx ON posts((file->>'path'));")
+        conn.commit()
+        conn.close()
+    else:
+        print('(You are running `sdkdd` dry. Nothing will actually be updated/moved. Feel free to exit anytime.)\n')
+    
     with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
         scan_files_for_apply(pool, timestamp)
         scan_attachments_for_apply(pool, timestamp)
