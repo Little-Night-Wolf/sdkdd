@@ -88,5 +88,7 @@ def migrate_file(path: str, migration_id):
             if os.path.isfile(os.path.join(thumb_dir, web_path)) and not os.path.isfile(os.path.join(thumb_dir, new_filename)):
                 os.rename(os.path.join(thumb_dir, web_path), os.path.join(thumb_dir, new_filename))
 
+        conn.close()
+        
         # done!
         print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated)')
