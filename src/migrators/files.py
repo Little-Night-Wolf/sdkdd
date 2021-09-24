@@ -1,6 +1,6 @@
 import hashlib
 import os
-from ..utils import trace_unhandled_exceptions
+from ..utils import trace_unhandled_exceptions, remove_suffix
 import config
 import psycopg2
 import pathlib
@@ -13,7 +13,7 @@ def migrate_file(path: str, migration_id):
         return
     
     file_ext = os.path.splitext(path)[1]
-    web_path = path.replace(config.data_dir.removesuffix('/'), '')
+    web_path = path.replace(remove_suffix(config.data_dir, '/'), '')
     with open(path, 'rb') as f:
         # get hash and filename
         file_hash_raw = hashlib.sha256()
