@@ -72,14 +72,12 @@ def apply():
                 );
             """
         )
-        # indexing locks up db writes, disabled for now
-        # cursor.execute("CREATE INDEX IF NOT EXISTS filepathidx ON posts((file->>'path'));")
         conn.commit()
         conn.close()
     else:
         print('(You are running `sdkdd` dry. Nothing will actually be updated/moved. Feel free to exit anytime.)\n')
     
-    with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
+    with multiprocessing.Pool(config.processes or multiprocessing.cpu_count()) as pool:
         if (config.scan_files):
             scan_files_for_apply(pool, timestamp)
         if (config.scan_attachments):
@@ -89,21 +87,9 @@ def apply():
         pool.close()
         pool.join()
 
-    # conn = psycopg2.connect(
-    #     host = config.database_host,
-    #     dbname = config.database_dbname,
-    #     user = config.database_user,
-    #     password = config.database_password,
-    #     port = 5432
-    # )
-    # cursor = conn.cursor()
-    # cursor.execute("DROP INDEX IF EXISTS filepathidx;")
-    # conn.commit()
-    # conn.close()
-
 @cli.command()
 def revert():
-    click.echo('revert')
+    click.echo('revert (unimplemented...)')
 
 if __name__ == '__main__':
     cli()

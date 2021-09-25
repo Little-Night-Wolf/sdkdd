@@ -13,3 +13,5 @@ fix_jpe = True # replace .jpe with .jpg
 scan_files = True
 scan_attachments = True
 scan_inline = True
+
+processes = None # number of concurrent migration jobs to run. leave blank to scale by cpu core count
