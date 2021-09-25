@@ -6,3 +6,10 @@ database_host = 'localhost'
 database_dbname = ''
 database_user = ''
 database_password = ''
+
+ignore_temp_files = True # ignore .temp files
+fix_jpe = True # replace .jpe with .jpg
+
+scan_files = True
+scan_attachments = True
+scan_inline = True

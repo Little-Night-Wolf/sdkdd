@@ -30,8 +30,7 @@ def scan_attachments_for_apply(pool, migration_id, dir = os.path.join(config.dat
     with os.scandir(dir) as it:
         for entry in it:
             if entry.is_file():
-                pass
-                # pool.apply_async(migrate_attachment, args=(entry.path, migration_id))
+                pool.apply_async(migrate_attachment, args=(entry.path, migration_id))
             else:
                 scan_attachments_for_apply(pool, migration_id, dir = entry.path)
 
@@ -43,8 +42,7 @@ def scan_inline_for_apply(pool, migration_id, dir = os.path.join(config.data_dir
     with os.scandir(dir) as it:
         for entry in it:
             if entry.is_file():
-                pass
-                # pool.apply_async(migrate_inline, args=(entry.path, migration_id))
+                pool.apply_async(migrate_inline, args=(entry.path, migration_id))
             else:
                 scan_inline_for_apply(pool, migration_id, dir = entry.path)
 
@@ -82,9 +80,12 @@ def apply():
         print('(You are running `sdkdd` dry. Nothing will actually be updated/moved. Feel free to exit anytime.)\n')
     
     with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
-        scan_files_for_apply(pool, timestamp)
-        scan_attachments_for_apply(pool, timestamp)
-        scan_inline_for_apply(pool, timestamp)
+        if (config.scan_files):
+            scan_files_for_apply(pool, timestamp)
+        if (config.scan_attachments):
+            scan_attachments_for_apply(pool, timestamp)
+        if (config.scan_inline):
+            scan_inline_for_apply(pool, timestamp)
         pool.close()
         pool.join()
 

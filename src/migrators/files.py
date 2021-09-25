@@ -12,6 +12,9 @@ def migrate_file(path: str, migration_id):
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path):
         return
     
+    if config.ignore_temp_files and path.endswith('.temp'):
+        return
+    
     file_ext = os.path.splitext(path)[1]
     web_path = path.replace(remove_suffix(config.data_dir, '/'), '')
     with open(path, 'rb') as f:
@@ -21,6 +24,9 @@ def migrate_file(path: str, migration_id):
             file_hash_raw.update(chunk)
         file_hash = file_hash_raw.hexdigest()
         new_filename = os.path.join('/', file_hash[0], file_hash[1:3], file_hash + file_ext)
+        
+        if (config.fix_jpe):
+            new_filename = new_filename.replace('.jpe', '.jpg')
         
         fname = pathlib.Path(path)
         mtime = datetime.datetime.fromtimestamp(fname.stat().st_mtime)
@@ -89,6 +95,6 @@ def migrate_file(path: str, migration_id):
                 os.rename(os.path.join(thumb_dir, web_path), os.path.join(thumb_dir, new_filename))
 
         conn.close()
-        
+
         # done!
         print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated)')
