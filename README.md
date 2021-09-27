@@ -17,4 +17,7 @@ python3 sdkdd.py
 - [ ] Finish file-tracking migrations in Kitsune (table creation)
 - [ ] Finish actual downloading behavior in Kitsune (sha256 filenames, skip move operation on existence, replace .jpe with .jpg)
 - [ ] Change Kemono render behavior (don't render images with the same path)
+- [ ] Check magic number for file type and change extensions
+- [ ] Change ctime/mtime handling to use datetimes instead of floats
+### Low priority
 - [ ] Add rollback/revert mode that runs on previous migration logs
