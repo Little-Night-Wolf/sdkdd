@@ -23,7 +23,7 @@ def migrate_inline(path, migration_id):
         for chunk in iter(lambda: f.read(8192), b''):
             file_hash_raw.update(chunk)
         file_hash = file_hash_raw.hexdigest()
-        new_filename = os.path.join('/', file_hash[0], file_hash[1:3], file_hash + file_ext)
+        new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash + file_ext)
         
         if (config.fix_jpe):
             new_filename = new_filename.replace('.jpe', '.jpg')
