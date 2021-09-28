@@ -213,7 +213,7 @@ def migrate_attachment(path, migration_id):
         # log to sdkdd_migration_{migration_id}
         if (not config.dry_run):
             cursor = conn.cursor()
-            cursor.execute(f"INSERT INTO sdkdd_migration_{migration_id} (old_location, new_location, ctime, mtime) VALUES (%s, %s, %s, %s)", (path, new_filename, mtime, ctime))
+            cursor.execute(f"INSERT INTO sdkdd_migration_{migration_id} (old_location, new_location, ctime, mtime) VALUES (%s, %s, %s, %s)", (web_path, new_filename, mtime, ctime))
             cursor.close()
 
         # commit db
