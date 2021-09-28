@@ -21,7 +21,8 @@ python3 sdkdd.py
 ## FAQ
 ### I stopped sdkdd in the middle of a wet run! Is running it again fine?
 Yes. Just re-run the script, and it will pick up where it left off.
-
+### Can I run this live?
+Yes. `sdkdd` can run while your instance is on, provided you are on the latest Kitsune version to avoid potential race conditions.
 ## TODO
 - [x] Finish file-tracking migrations in Kitsune (table creation)
 - [x] Finish actual downloading behavior in Kitsune (sha256 filenames, skip move operation on existence, replace .jpe with .jpg)
