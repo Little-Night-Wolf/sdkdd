@@ -145,7 +145,7 @@ def migrate_attachment(path, migration_id):
         # log file post relationship (not discord)
         if (not config.dry_run and updated_rows > 0 and service and user_id and post_id):
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO file_post_relationships (file_id, filename, service, user, post, inline) VALUES (%s, %s, %s, %s, %s, %s)", (file_id, os.path.basename(path), service, user_id, post_id, False))
+            cursor.execute("INSERT INTO file_post_relationships (file_id, filename, service, user, post, inline) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING", (file_id, os.path.basename(path), service, user_id, post_id, False))
 
         # Discord
         server_id = None
@@ -207,7 +207,7 @@ def migrate_attachment(path, migration_id):
         # log file post relationship (discord)
         if (not config.dry_run and updated_rows > 0 and server_id and channel_id and message_id):
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO file_discord_message_relationships (file_id, filename, server, channel, id) VALUES (%s, %s, %s, %s, %s)", (file_id, os.path.basename(path), server_id, channel_id, message_id))
+            cursor.execute("INSERT INTO file_discord_message_relationships (file_id, filename, server, channel, id) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING", (file_id, os.path.basename(path), server_id, channel_id, message_id))
         
         # log to sdkdd_migration_{migration_id}
         if (not config.dry_run):
