@@ -59,6 +59,7 @@ def migrate_file(path: str, migration_id):
             file_id = cursor.fetchone()['id']
         
         updated_rows = 0
+        step = 1
         # update "file" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to derive the user and post id from the original path
         if (len(web_path.split('/')) >= 4):
@@ -79,6 +80,7 @@ def migrate_file(path: str, migration_id):
         
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
+            step = 2
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE added >= %s AND added < %s AND file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";",
@@ -94,6 +96,7 @@ def migrate_file(path: str, migration_id):
 
         # optimizations didn't work, scan the entire table
         if updated_rows == 0:
+            step = 3
             cursor = conn.cursor()
             cursor.execute("UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";", (f'"{new_filename}"', web_path))
             updated_rows = cursor.rowcount
@@ -138,6 +141,6 @@ def migrate_file(path: str, migration_id):
 
         # done!
         if (service and user_id and post_id):
-            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; {service}/{user_id}/{post_id})')
+            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; {service}/{user_id}/{post_id}, found at step {step})')
         else:
             print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; no post/messages found)')

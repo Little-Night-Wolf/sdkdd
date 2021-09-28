@@ -59,6 +59,7 @@ def migrate_attachment(path, migration_id):
             file_id = cursor.fetchone()['id']
         
         updated_rows = 0
+        step = 1
         # update "attachment" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to derive the user and post id from the original path
         if (len(web_path.split('/')) >= 4):
@@ -75,7 +76,7 @@ def migrate_attachment(path, migration_id):
                   UPDATE posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
                     FROM selected_attachment
-                    WHERE posts.service = selected_attachment.service AND posts."user" = selected_attachment."user" AND posts.id = selected_attachment.id
+                    WHERE posts.id = selected_attachment.id AND posts."user" = selected_attachment."user" AND posts.service = selected_attachment.service 
                     RETURNING posts.id, posts.service, posts."user"
                 """,
                 (guessed_post_id, guessed_user_id, web_path, f'"{new_filename}"')
@@ -90,6 +91,7 @@ def migrate_attachment(path, migration_id):
         
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
+            step = 2
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -101,7 +103,7 @@ def migrate_attachment(path, migration_id):
                   UPDATE posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
                     FROM selected_attachment
-                    WHERE posts.service = selected_attachment.service AND posts."user" = selected_attachment."user" AND posts.id = selected_attachment.id
+                    WHERE posts.id = selected_attachment.id AND posts."user" = selected_attachment."user" AND posts.service = selected_attachment.service
                     RETURNING posts.id, posts.service, posts."user"
                 """,
                 (mtime, mtime + datetime.timedelta(hours=1), web_path, f'"{new_filename}"')
@@ -116,6 +118,7 @@ def migrate_attachment(path, migration_id):
 
         # optimizations didn't work, scan the entire table
         if updated_rows == 0:
+            step = 3
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -126,7 +129,7 @@ def migrate_attachment(path, migration_id):
                   UPDATE posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
                     FROM selected_attachment
-                    WHERE posts.service = selected_attachment.service AND posts."user" = selected_attachment."user" AND posts.id = selected_attachment.id
+                    WHERE posts.id = selected_attachment.id AND posts."user" = selected_attachment."user" AND posts.service = selected_attachment.service
                     RETURNING posts.id, posts.service, posts."user"
                 """,
                 (web_path, f'"{new_filename}"',)
@@ -149,6 +152,7 @@ def migrate_attachment(path, migration_id):
         channel_id = None
         message_id = None
         if (updated_rows == 0 and len(web_path.split('/')) >= 4):
+            step = 4
             guessed_message_id = web_path.split('/')[-2]
             guessed_server_id = web_path.split('/')[-3]
             cursor = conn.cursor()
@@ -162,7 +166,7 @@ def migrate_attachment(path, migration_id):
                   UPDATE discord_posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
                     FROM selected_attachment
-                    WHERE discord_posts.server = selected_attachment.server AND discord_posts.channel = selected_attachment.channel AND discord_posts.id = selected_attachment.id
+                    WHERE discord_posts.id = selected_attachment.id AND discord_posts.channel = selected_attachment.channel AND discord_posts.server = selected_attachment.server
                     RETURNING discord_posts.server, discord_posts.channel, discord_posts.id
                 """,
                 (guessed_message_id, guessed_server_id, web_path, f'"{new_filename}"')
@@ -176,6 +180,7 @@ def migrate_attachment(path, migration_id):
             cursor.close()
 
         if (updated_rows == 0):
+            step = 5
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -186,7 +191,7 @@ def migrate_attachment(path, migration_id):
                   UPDATE discord_posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
                     FROM selected_attachment
-                    WHERE discord_posts.server = selected_attachment.server AND discord_posts.channel = selected_attachment.channel AND discord_posts.id = selected_attachment.id
+                    WHERE discord_posts.id = selected_attachment.id AND discord_posts.channel = selected_attachment.channel AND discord_posts.server = selected_attachment.server
                     RETURNING discord_posts.server, discord_posts.channel, discord_posts.id
                 """,
                 (web_path, f'"{new_filename}"',)
@@ -230,6 +235,8 @@ def migrate_attachment(path, migration_id):
 
         # done!
         if (service and user_id and post_id):
-            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; {service}/{user_id}/{post_id})')
+            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; {service}/{user_id}/{post_id}, found at step {step})')
+        elif (server_id and channel_id and message_id):
+            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; discord/{server_id}/{channel_id}/{message_id}, found at step {step})')
         else:
             print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; no post/messages found)')

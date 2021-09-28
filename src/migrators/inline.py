@@ -61,6 +61,7 @@ def migrate_inline(path, migration_id):
         updated_rows = 0
         # update "inline" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
+        step = 1
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE posts SET content = replace(content, %s, %s) WHERE added >= %s AND added < %s AND content LIKE %s RETURNING posts.id, posts.service, posts.\"user\";",
@@ -77,6 +78,7 @@ def migrate_inline(path, migration_id):
         # optimizations didn't work, simply find and replace references in inline text.
         # ... this will take a very long time.
         if updated_rows == 0:
+            step = 2
             cursor = conn.cursor()
             cursor.execute("UPDATE posts SET content = replace(content, %s, %s) WHERE content LIKE %s RETURNING posts.id, posts.service, posts.\"user\";", (web_path, new_filename, f'%{web_path}%'))
             updated_rows = cursor.rowcount
@@ -119,6 +121,6 @@ def migrate_inline(path, migration_id):
         
         # done!
         if (service and user_id and post_id):
-            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; {service}/{user_id}/{post_id})')
+            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; {service}/{user_id}/{post_id}, found at step {step})')
         else:
             print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; no post/messages found)')
