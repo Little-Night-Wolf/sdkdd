@@ -1,6 +1,6 @@
 import hashlib
 import os
-from ..utils import trace_unhandled_exceptions, remove_suffix
+from ..utils import trace_unhandled_exceptions, remove_suffix, remove_prefix
 import config
 import psycopg2
 import pathlib
@@ -31,7 +31,7 @@ def migrate_inline(path, migration_id):
         for chunk in iter(lambda: f.read(8192), b''):
             file_hash_raw.update(chunk)
         file_hash = file_hash_raw.hexdigest()
-        new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash + file_ext)
+        new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash)
         
         mime = magic.from_file(path, mime=True)
         if (config.fix_extensions):
@@ -56,7 +56,7 @@ def migrate_inline(path, migration_id):
         # log to file tracking table
         if (not config.dry_run):
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO files (hash, mtime, ctime, mime, ext) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO UPDATE EXCLUDED.hash = hash RETURNING id", (file_hash, mtime, ctime, mime, file_ext))
+            cursor.execute("INSERT INTO files (hash, mtime, ctime, mime, ext) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (hash) DO UPDATE SET hash = EXCLUDED.hash RETURNING id", (file_hash, mtime, ctime, mime, file_ext))
             file_id = cursor.fetchone()['id']
 
         updated_rows = 0
@@ -109,14 +109,18 @@ def migrate_inline(path, migration_id):
             conn.commit()
         
         if (not config.dry_run):
+            new_filename_without_prefix = remove_prefix(new_filename, '/')
+            web_path_without_prefix = remove_prefix(web_path, '/')
             # move to hashy location, do nothing if something is already there
-            if os.path.isfile(path) and not os.path.isfile(os.path.join(config.data_dir, new_filename)):
-                os.rename(path, os.path.join(config.data_dir, new_filename))
+            if os.path.isfile(path) and not os.path.isfile(os.path.join(config.data_dir, new_filename_without_prefix)):
+                os.makedirs(os.path.join(config.data_dir, file_hash[0:2], file_hash[2:4]), exist_ok=True)
+                os.rename(path, os.path.join(config.data_dir, new_filename_without_prefix))
 
             # move thumbnail to hashy location
             thumb_dir = config.thumb_dir or os.path.join(config.data_dir, 'thumbnail')
-            if os.path.isfile(os.path.join(thumb_dir, web_path)) and not os.path.isfile(os.path.join(thumb_dir, new_filename)):
-                os.rename(os.path.join(thumb_dir, web_path), os.path.join(thumb_dir, new_filename))
+            if os.path.isfile(os.path.join(thumb_dir, web_path_without_prefix)) and not os.path.isfile(os.path.join(thumb_dir, new_filename_without_prefix)):
+                os.makedirs(os.path.join(config.data_dir, file_hash[0:2], file_hash[2:4]), exist_ok=True)
+                os.rename(os.path.join(thumb_dir, web_path_without_prefix), os.path.join(thumb_dir, new_filename_without_prefix))
 
         if (not config.dry_run and config.ban_url and service and user_id):
             requests.request('BAN', f"{config.ban_url}/{service}/user/" + user_id)
