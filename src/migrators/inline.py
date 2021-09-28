@@ -117,4 +117,7 @@ def migrate_inline(path, migration_id):
         conn.close()
         
         # done!
-        print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated)')
+        if (service and user_id and post_id):
+            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; {service}/{user_id}/{post_id})')
+        else:
+            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; no post/messages found)')
