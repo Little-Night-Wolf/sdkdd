@@ -47,7 +47,8 @@ def migrate_attachment(path, migration_id):
             dbname = config.database_dbname,
             user = config.database_user,
             password = config.database_password,
-            port = 5432
+            port = 5432,
+            cursor_factory=psycopg2.extras.RealDictCursor
         )
 
         # log to file tracking table
