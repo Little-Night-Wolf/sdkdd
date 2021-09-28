@@ -5,6 +5,9 @@ import config
 import psycopg2
 import pathlib
 import datetime
+import magic
+import re
+import mimetypes
 
 @trace_unhandled_exceptions
 def migrate_attachment(path, migration_id):
@@ -23,10 +26,12 @@ def migrate_attachment(path, migration_id):
         for chunk in iter(lambda: f.read(8192), b''):
             file_hash_raw.update(chunk)
         file_hash = file_hash_raw.hexdigest()
-        new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash + file_ext)
+        new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash)
         
-        if (config.fix_jpe):
-            new_filename = new_filename.replace('.jpe', '.jpg')
+        if (config.fix_extensions):
+            new_filename = new_filename + re.sub('^.jpe$', '.jpg', mimetypes.guess_extension(magic.from_file(path, mime=True), strict=False))
+        else:
+            new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext) if config.fix_jpe else file_ext)
         
         fname = pathlib.Path(path)
         mtime = datetime.datetime.fromtimestamp(fname.stat().st_mtime)
