@@ -5,6 +5,9 @@ import config
 import psycopg2
 import pathlib
 import datetime
+import magic
+import re
+import mimetypes
 
 @trace_unhandled_exceptions
 def migrate_file(path: str, migration_id):
@@ -17,16 +20,23 @@ def migrate_file(path: str, migration_id):
     
     file_ext = os.path.splitext(path)[1]
     web_path = path.replace(remove_suffix(config.data_dir, '/'), '')
+    service = None
+    post_id = None
+    user_id = None
     with open(path, 'rb') as f:
         # get hash and filename
         file_hash_raw = hashlib.sha256()
         for chunk in iter(lambda: f.read(8192), b''):
             file_hash_raw.update(chunk)
         file_hash = file_hash_raw.hexdigest()
-        new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash + file_ext)
+        new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash)
         
-        if (config.fix_jpe):
-            new_filename = new_filename.replace('.jpe', '.jpg')
+        mime = magic.from_file(path, mime=True)
+        if (config.fix_extensions):
+            file_ext = mimetypes.guess_extension(mime, strict=False)
+            new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext) if config.fix_jpe else file_ext)
+        else:
+            new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext) if config.fix_jpe else file_ext)
         
         fname = pathlib.Path(path)
         mtime = datetime.datetime.fromtimestamp(fname.stat().st_mtime)
@@ -40,6 +50,12 @@ def migrate_file(path: str, migration_id):
             port = 5432
         )
 
+        # log to file tracking table
+        if (not config.dry_run):
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO files (hash, mtime, ctime, mime, ext) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO UPDATE EXCLUDED.hash = hash RETURNING id", (file_hash, mtime, ctime, mime, file_ext))
+            file_id = cursor.fetchone()['id']
+        
         updated_rows = 0
         # update "file" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to derive the user and post id from the original path
@@ -48,29 +64,49 @@ def migrate_file(path: str, migration_id):
             guessed_user_id = web_path.split('/')[-3]
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE id = %s AND \"user\" = %s AND file ->> 'path' = %s;",
+                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE id = %s AND \"user\" = %s AND file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";",
                 (f'"{new_filename}"', guessed_post_id, guessed_user_id, web_path)
             )
             updated_rows = cursor.rowcount
+            post = cursor.fetchone()
+            if (post):
+                service = post['service']
+                user_id = post['user']
+                post_id = post['id']
             cursor.close()
         
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE added >= %s AND added < %s AND file ->> 'path' = %s;",
+                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE added >= %s AND added < %s AND file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";",
                 (f'"{new_filename}"', mtime, mtime + datetime.timedelta(hours=1), web_path)
             )
             updated_rows = cursor.rowcount
+            post = cursor.fetchone()
+            if (post):
+                service = post['service']
+                user_id = post['user']
+                post_id = post['id']
             cursor.close()
 
         # optimizations didn't work, scan the entire table
         if updated_rows == 0:
             cursor = conn.cursor()
-            cursor.execute("UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE file ->> 'path' = %s;", (f'"{new_filename}"', web_path))
+            cursor.execute("UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";", (f'"{new_filename}"', web_path))
             updated_rows = cursor.rowcount
+            post = cursor.fetchone()
+            if (post):
+                service = post['service']
+                user_id = post['user']
+                post_id = post['id']
             cursor.close()
 
+        # log file post relationship (not discord)
+        if (not config.dry_run and updated_rows > 0 and service and user_id and post_id):
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO file_post_relationships (file_id, filename, service, user, post, inline) VALUES (%s, %s, %s, %s, %s, %s)", (file_id, os.path.basename(path), service, user_id, post_id, False))
+        
         # log to sdkdd_migration_{migration_id} (see sdkdd.py for schema)
         # log to general file tracking table (schema: serial id, hash, filename, locally stored path, remotely stored path?, last known mtime, last known ctime, extension, mimetype, service, user, post, contributor_user?)
         if (not config.dry_run):

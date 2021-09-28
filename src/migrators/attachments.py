@@ -20,6 +20,9 @@ def migrate_attachment(path, migration_id):
     
     file_ext = os.path.splitext(path)[1]
     web_path = path.replace(remove_suffix(config.data_dir, '/'), '')
+    service = None
+    post_id = None
+    user_id = None
     with open(path, 'rb') as f:
         # get hash and filename
         file_hash_raw = hashlib.sha256()
@@ -28,8 +31,10 @@ def migrate_attachment(path, migration_id):
         file_hash = file_hash_raw.hexdigest()
         new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash)
         
+        mime = magic.from_file(path, mime=True)
         if (config.fix_extensions):
-            new_filename = new_filename + re.sub('^.jpe$', '.jpg', mimetypes.guess_extension(magic.from_file(path, mime=True), strict=False))
+            file_ext = mimetypes.guess_extension(mime, strict=False)
+            new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext) if config.fix_jpe else file_ext)
         else:
             new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext) if config.fix_jpe else file_ext)
         
@@ -45,6 +50,12 @@ def migrate_attachment(path, migration_id):
             port = 5432
         )
 
+        # log to file tracking table
+        if (not config.dry_run):
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO files (hash, mtime, ctime, mime, ext) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO UPDATE EXCLUDED.hash = hash RETURNING id", (file_hash, mtime, ctime, mime, file_ext))
+            file_id = cursor.fetchone()['id']
+        
         updated_rows = 0
         # update "attachment" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to derive the user and post id from the original path
@@ -63,10 +74,16 @@ def migrate_attachment(path, migration_id):
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
                     FROM selected_attachment
                     WHERE posts.service = selected_attachment.service AND posts."user" = selected_attachment."user" AND posts.id = selected_attachment.id
+                    RETURNING posts.id, posts.service, posts."user"
                 """,
                 (guessed_post_id, guessed_user_id, web_path, f'"{new_filename}"')
             )
             updated_rows = cursor.rowcount
+            post = cursor.fetchone()
+            if (post):
+                service = post['service']
+                user_id = post['user']
+                post_id = post['id']
             cursor.close()
         
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
@@ -83,10 +100,16 @@ def migrate_attachment(path, migration_id):
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
                     FROM selected_attachment
                     WHERE posts.service = selected_attachment.service AND posts."user" = selected_attachment."user" AND posts.id = selected_attachment.id
+                    RETURNING posts.id, posts.service, posts."user"
                 """,
                 (mtime, mtime + datetime.timedelta(hours=1), web_path, f'"{new_filename}"')
             )
             updated_rows = cursor.rowcount
+            post = cursor.fetchone()
+            if (post):
+                service = post['service']
+                user_id = post['user']
+                post_id = post['id']
             cursor.close()
 
         # optimizations didn't work, scan the entire table
@@ -102,13 +125,27 @@ def migrate_attachment(path, migration_id):
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
                     FROM selected_attachment
                     WHERE posts.service = selected_attachment.service AND posts."user" = selected_attachment."user" AND posts.id = selected_attachment.id
+                    RETURNING posts.id, posts.service, posts."user"
                 """,
                 (web_path, f'"{new_filename}"',)
             )
             updated_rows = cursor.rowcount
+            post = cursor.fetchone()
+            if (post):
+                service = post['service']
+                user_id = post['user']
+                post_id = post['id']
             cursor.close()
+        
+        # log file post relationship (not discord)
+        if (not config.dry_run and updated_rows > 0 and service and user_id and post_id):
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO file_post_relationships (file_id, filename, service, user, post, inline) VALUES (%s, %s, %s, %s, %s, %s)", (file_id, os.path.basename(path), service, user_id, post_id, False))
 
         # Discord
+        server_id = None
+        channel_id = None
+        message_id = None
         if (updated_rows == 0 and len(web_path.split('/')) >= 4):
             guessed_message_id = web_path.split('/')[-2]
             guessed_server_id = web_path.split('/')[-3]
@@ -124,10 +161,16 @@ def migrate_attachment(path, migration_id):
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
                     FROM selected_attachment
                     WHERE discord_posts.server = selected_attachment.server AND discord_posts.channel = selected_attachment.channel AND discord_posts.id = selected_attachment.id
+                    RETURNING discord_posts.server, discord_posts.channel, discord_posts.id
                 """,
                 (guessed_message_id, guessed_server_id, web_path, f'"{new_filename}"')
             )
             updated_rows = cursor.rowcount
+            message = cursor.fetchone()
+            if (message):
+                server_id = message['server']
+                channel_id = message['channel']
+                message_id = message['id']
             cursor.close()
 
         if (updated_rows == 0):
@@ -142,14 +185,24 @@ def migrate_attachment(path, migration_id):
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
                     FROM selected_attachment
                     WHERE discord_posts.server = selected_attachment.server AND discord_posts.channel = selected_attachment.channel AND discord_posts.id = selected_attachment.id
+                    RETURNING discord_posts.server, discord_posts.channel, discord_posts.id
                 """,
                 (web_path, f'"{new_filename}"',)
             )
             updated_rows = cursor.rowcount
+            message = cursor.fetchone()
+            if (message):
+                server_id = message['server']
+                channel_id = message['channel']
+                message_id = message['id']
             cursor.close()
         
-        # log to sdkdd_migration_{migration_id} (see sdkdd.py for schema)
-        # log to general file tracking table (schema: serial id, hash, filename, locally stored path, remotely stored path?, last known mtime, last known ctime, extension, mimetype, service, user, post, contributor_user?)
+        # log file post relationship (discord)
+        if (not config.dry_run and updated_rows > 0 and server_id and channel_id and message_id):
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO file_discord_message_relationships (file_id, filename, server, channel, id) VALUES (%s, %s, %s, %s, %s)", (file_id, os.path.basename(path), server_id, channel_id, message_id))
+        
+        # log to sdkdd_migration_{migration_id}
         if (not config.dry_run):
             cursor = conn.cursor()
             cursor.execute(f"INSERT INTO sdkdd_migration_{migration_id} (old_location, new_location, ctime, mtime) VALUES (%s, %s, %s, %s)", (path, new_filename, mtime, ctime))

@@ -8,7 +8,8 @@ database_user = ''
 database_password = ''
 
 ignore_temp_files = True # ignore .temp files
-fix_jpe = True # replace .jpe with .jpg
+fix_extensions = True # scan files with libmagic to replace existing extensions with (potentially) more accurate ones.
+fix_jpe = True # replace .jpe extensions with .jpg
 
 scan_files = True
 scan_attachments = True
