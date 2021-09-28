@@ -8,6 +8,7 @@ import datetime
 import magic
 import re
 import mimetypes
+from psycopg2.extras import RealDictCursor
 
 @trace_unhandled_exceptions
 def migrate_inline(path, migration_id):
@@ -48,7 +49,7 @@ def migrate_inline(path, migration_id):
             user = config.database_user,
             password = config.database_password,
             port = 5432,
-            cursor_factory=psycopg2.extras.RealDictCursor
+            cursor_factory=RealDictCursor
         )
 
         # log to file tracking table
