@@ -14,8 +14,8 @@ python3 sdkdd.py
 `sdkdd` will begin moving files and changing database entries. When it is done, everything left in `files`, `attachments`, and `inline` are duplicate/garbage files that can be safely discarded.
 
 ## TODO
-- [ ] Finish file-tracking migrations in Kitsune (table creation)
-- [ ] Finish actual downloading behavior in Kitsune (sha256 filenames, skip move operation on existence, replace .jpe with .jpg)
+- [x] Finish file-tracking migrations in Kitsune (table creation)
+- [x] Finish actual downloading behavior in Kitsune (sha256 filenames, skip move operation on existence, replace .jpe with .jpg)
 - [ ] Change Kemono render behavior (don't render images with the same path)
 - [ ] Check magic number for file type and change extensions
 - [x] Change ctime/mtime handling to use datetimes instead of floats
