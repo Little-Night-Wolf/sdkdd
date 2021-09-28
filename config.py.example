@@ -15,4 +15,8 @@ scan_files = True
 scan_attachments = True
 scan_inline = True
 
+# BAN url prefix (for varnish purging and the like) (optional)
+# ban_url = 'http://10.0.0.1:8313'
+ban_url = None 
+
 processes = None # number of concurrent migration jobs to run. leave blank to scale by cpu core count

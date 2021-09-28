@@ -8,6 +8,7 @@ import datetime
 import magic
 import re
 import mimetypes
+import requests
 from psycopg2.extras import RealDictCursor
 
 @trace_unhandled_exceptions
@@ -231,6 +232,9 @@ def migrate_attachment(path, migration_id):
             if os.path.isfile(os.path.join(thumb_dir, web_path)) and not os.path.isfile(os.path.join(thumb_dir, new_filename)):
                 os.rename(os.path.join(thumb_dir, web_path), os.path.join(thumb_dir, new_filename))
 
+        if (not config.dry_run and config.ban_url and service and user_id):
+            requests.request('BAN', f"{config.ban_url}/{service}/user/" + user_id)
+        
         conn.close()
 
         # done!
