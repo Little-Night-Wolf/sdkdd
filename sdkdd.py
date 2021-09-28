@@ -67,8 +67,8 @@ def apply():
                 CREATE TABLE sdkdd_migration_{timestamp} (
                     "old_location" text NOT NULL,
                     "new_location" text NOT NULL,
-                    "ctime" numeric NOT NULL,
-                    "mtime" numeric NOT NULL
+                    "ctime" timestamp NOT NULL,
+                    "mtime" timestamp NOT NULL
                 );
             """
         )

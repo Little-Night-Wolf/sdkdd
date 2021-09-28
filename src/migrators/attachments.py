@@ -147,7 +147,7 @@ def migrate_attachment(path, migration_id):
         # log to general file tracking table (schema: serial id, hash, filename, locally stored path, remotely stored path?, last known mtime, last known ctime, extension, mimetype, service, user, post, contributor_user?)
         if (not config.dry_run):
             cursor = conn.cursor()
-            cursor.execute(f"INSERT INTO sdkdd_migration_{migration_id} (old_location, new_location, ctime, mtime) VALUES (%s, %s, %s, %s)", (path, new_filename, mtime.timestamp(), ctime.timestamp()))
+            cursor.execute(f"INSERT INTO sdkdd_migration_{migration_id} (old_location, new_location, ctime, mtime) VALUES (%s, %s, %s, %s)", (path, new_filename, mtime, ctime))
             cursor.close()
 
         # commit db
