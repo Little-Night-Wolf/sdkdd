@@ -93,7 +93,7 @@ def migrate_inline(path, migration_id):
         # log file post relationship (not discord)
         if (not config.dry_run and updated_rows > 0 and service and user_id and post_id):
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO file_post_relationships (file_id, filename, service, user, post, inline) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING", (file_id, os.path.basename(path), service, user_id, post_id, True))
+            cursor.execute("INSERT INTO file_post_relationships (file_id, filename, service, \"user\", post, inline) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING", (file_id, os.path.basename(path), service, user_id, post_id, True))
 
         # log to sdkdd_migration_{migration_id} (see sdkdd.py for schema)
         # log to general file tracking table (schema: serial id, hash, filename, locally stored path, remotely stored path?, last known mtime, last known ctime, extension, mimetype, service, user, post, contributor_user?)

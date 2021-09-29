@@ -68,8 +68,8 @@ def migrate_file(path: str, migration_id):
             guessed_user_id = web_path.split('/')[-3]
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE id = %s AND \"user\" = %s AND file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";",
-                (f'"{new_filename}"', guessed_post_id, guessed_user_id, web_path)
+                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE id = %s AND \"user\" = %s AND (file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
+                (f'"{new_filename}"', guessed_post_id, guessed_user_id, web_path, new_filename)
             )
             updated_rows = cursor.rowcount
             post = cursor.fetchone()
@@ -84,8 +84,8 @@ def migrate_file(path: str, migration_id):
             step = 2
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE added >= %s AND added < %s AND file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";",
-                (f'"{new_filename}"', mtime, mtime + datetime.timedelta(hours=1), web_path)
+                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE added >= %s AND added < %s AND (file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
+                (f'"{new_filename}"', mtime, mtime + datetime.timedelta(hours=1), web_path, new_filename)
             )
             updated_rows = cursor.rowcount
             post = cursor.fetchone()
@@ -99,7 +99,7 @@ def migrate_file(path: str, migration_id):
         if updated_rows == 0:
             step = 3
             cursor = conn.cursor()
-            cursor.execute("UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";", (f'"{new_filename}"', web_path))
+            cursor.execute("UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE file ->> 'path' = %s OR file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";", (f'"{new_filename}"', web_path, new_filename))
             updated_rows = cursor.rowcount
             post = cursor.fetchone()
             if (post):
@@ -111,7 +111,7 @@ def migrate_file(path: str, migration_id):
         # log file post relationship (not discord)
         if (not config.dry_run and updated_rows > 0 and service and user_id and post_id):
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO file_post_relationships (file_id, filename, service, user, post, inline) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING", (file_id, os.path.basename(path), service, user_id, post_id, False))
+            cursor.execute("INSERT INTO file_post_relationships (file_id, filename, service, \"user\", post, inline) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING", (file_id, os.path.basename(path), service, user_id, post_id, False))
         
         # log to sdkdd_migration_{migration_id} (see sdkdd.py for schema)
         # log to general file tracking table (schema: serial id, hash, filename, locally stored path, remotely stored path?, last known mtime, last known ctime, extension, mimetype, service, user, post, contributor_user?)
