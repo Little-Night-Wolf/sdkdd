@@ -70,7 +70,7 @@ def migrate_attachment(path, migration_id):
             cursor.execute(
                 """
                   WITH selected_attachment as (
-                    SELECT (index-1) as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
+                    SELECT index as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
                     WHERE id = %s AND \"user\" = %s
                       AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
@@ -97,7 +97,7 @@ def migrate_attachment(path, migration_id):
             cursor.execute(
                 """
                   WITH selected_attachment as (
-                    SELECT (index-1) as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
+                    SELECT index as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
                     WHERE added >= %s AND added < %s
                       AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
@@ -124,7 +124,7 @@ def migrate_attachment(path, migration_id):
             cursor.execute(
                 """
                   WITH selected_attachment as (
-                    SELECT (index-1) as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
+                    SELECT index as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
                     WHERE (attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
                   UPDATE posts
@@ -160,7 +160,7 @@ def migrate_attachment(path, migration_id):
             cursor.execute(
                 """
                   WITH selected_attachment as (
-                    SELECT (index-1) as json_index, server, channel, id FROM discord_posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
+                    SELECT index as json_index, server, channel, id FROM discord_posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
                     WHERE id = %s AND server = %s
                       AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
@@ -186,7 +186,7 @@ def migrate_attachment(path, migration_id):
             cursor.execute(
                 """
                   WITH selected_attachment as (
-                    SELECT (index-1) as json_index, server, channel, id FROM discord_posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
+                    SELECT index as json_index, server, channel, id FROM discord_posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
                     WHERE (attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
                   UPDATE discord_posts
