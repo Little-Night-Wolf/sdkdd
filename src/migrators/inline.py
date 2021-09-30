@@ -112,15 +112,15 @@ def migrate_inline(path, migration_id):
             new_filename_without_prefix = remove_prefix(new_filename, '/')
             web_path_without_prefix = remove_prefix(web_path, '/')
             # move to hashy location, do nothing if something is already there
-            if os.path.isfile(path) and not os.path.isfile(os.path.join(config.data_dir, new_filename_without_prefix)):
-                os.makedirs(os.path.join(config.data_dir, file_hash[0:2], file_hash[2:4]), exist_ok=True)
-                os.rename(path, os.path.join(config.data_dir, new_filename_without_prefix))
-
             # move thumbnail to hashy location
             thumb_dir = config.thumb_dir or os.path.join(config.data_dir, 'thumbnail')
             if os.path.isfile(os.path.join(thumb_dir, web_path_without_prefix)) and not os.path.isfile(os.path.join(thumb_dir, new_filename_without_prefix)):
                 os.makedirs(os.path.join(thumb_dir, file_hash[0:2], file_hash[2:4]), exist_ok=True)
                 os.rename(os.path.join(thumb_dir, web_path_without_prefix), os.path.join(thumb_dir, new_filename_without_prefix))
+            
+            if os.path.isfile(path) and not os.path.isfile(os.path.join(config.data_dir, new_filename_without_prefix)):
+                os.makedirs(os.path.join(config.data_dir, file_hash[0:2], file_hash[2:4]), exist_ok=True)
+                os.rename(path, os.path.join(config.data_dir, new_filename_without_prefix))
 
         if (not config.dry_run and config.ban_url and service and user_id):
             requests.request('BAN', f"{config.ban_url}/{service}/user/" + user_id)
