@@ -10,8 +10,10 @@ import re
 import mimetypes
 import requests
 from psycopg2.extras import RealDictCursor
+from retry import retry
 
 @trace_unhandled_exceptions
+@retry(tries=5)
 def migrate_file(path: str, migration_id):
     # check if the file is special (symlink, hardlink, empty) and return if so
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path):

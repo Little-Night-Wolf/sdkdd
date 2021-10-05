@@ -6,7 +6,7 @@ def trace_unhandled_exceptions(func):
         try:
             func(*args, **kwargs)
         except:
-            print('Exception in ' + func.__name__)
+            print('Exception in ' + func.__name__ + ' on file ' + args[0])
             traceback.print_exc()
     return wrapped_func
 

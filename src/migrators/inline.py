@@ -10,8 +10,10 @@ import re
 import mimetypes
 import requests
 from psycopg2.extras import RealDictCursor
+from retry import retry
 
 @trace_unhandled_exceptions
+@retry(tries=5)
 def migrate_inline(path, migration_id):
     # check if the file is special (symlink, hardlink, empty) and return if so
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path):
@@ -76,6 +78,7 @@ def migrate_inline(path, migration_id):
             post_id = post['id']
         cursor.close()
         
+        # NOTE: Check if filename is integer and use that for added time optimization.
         # optimizations didn't work, simply find and replace references in inline text.
         # ... this will take a very long time.
         if updated_rows == 0:
