@@ -37,7 +37,7 @@ def migrate_inline(path, migration_id):
         
         mime = magic.from_file(path, mime=True)
         if (config.fix_extensions):
-            file_ext = mimetypes.guess_extension(mime, strict=False)
+            file_ext = mimetypes.guess_extension(mime or 'application/octet-stream', strict=False)
             new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext) if config.fix_jpe else file_ext)
         else:
             new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext) if config.fix_jpe else file_ext)
