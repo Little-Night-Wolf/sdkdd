@@ -38,9 +38,9 @@ def migrate_attachment(path, migration_id):
         mime = magic.from_file(path, mime=True)
         if (config.fix_extensions):
             file_ext = mimetypes.guess_extension(mime or 'application/octet-stream', strict=False)
-            new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext) if config.fix_jpe else file_ext)
+            new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext or '.bin') if config.fix_jpe else file_ext or '.bin')
         else:
-            new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext) if config.fix_jpe else file_ext)
+            new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext or '.bin') if config.fix_jpe else file_ext or '.bin')
         
         fname = pathlib.Path(path)
         mtime = datetime.datetime.fromtimestamp(fname.stat().st_mtime)
