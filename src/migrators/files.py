@@ -70,8 +70,8 @@ def migrate_file(path: str, migration_id):
             guessed_user_id = web_path.split('/')[-3]
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE id = %s AND \"user\" = %s AND (file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
-                (f'"{new_filename}"', guessed_post_id, guessed_user_id, web_path, new_filename)
+                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE id = %s AND \"user\" = %s AND (file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
+                (f'"{new_filename}"', guessed_post_id, guessed_user_id, web_path, 'https://kemono.party' + web_path, new_filename)
             )
             updated_rows = cursor.rowcount
             post = cursor.fetchone()
@@ -86,8 +86,8 @@ def migrate_file(path: str, migration_id):
             step = 2
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE added >= %s AND added < %s AND (file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
-                (f'"{new_filename}"', mtime, mtime + datetime.timedelta(hours=1), web_path, new_filename)
+                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE added >= %s AND added < %s AND (file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
+                (f'"{new_filename}"', mtime, mtime + datetime.timedelta(hours=1), web_path, 'https://kemono.party' + web_path, new_filename)
             )
             updated_rows = cursor.rowcount
             post = cursor.fetchone()
@@ -101,7 +101,7 @@ def migrate_file(path: str, migration_id):
         if updated_rows == 0:
             step = 3
             cursor = conn.cursor()
-            cursor.execute("UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE file ->> 'path' = %s OR file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";", (f'"{new_filename}"', web_path, new_filename))
+            cursor.execute("UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";", (f'"{new_filename}"', web_path, 'https://kemono.party' + web_path, new_filename))
             updated_rows = cursor.rowcount
             post = cursor.fetchone()
             if (post):

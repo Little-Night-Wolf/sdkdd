@@ -67,8 +67,8 @@ def migrate_inline(path, migration_id):
         step = 1
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE posts SET content = replace(content, %s, %s) WHERE added >= %s AND added < %s AND content LIKE %s RETURNING posts.id, posts.service, posts.\"user\";",
-            (web_path, new_filename, mtime, mtime + datetime.timedelta(hours=1), f'%{web_path}%')
+            "UPDATE posts SET content = replace(replace(content, %s, %s), %s, %s) WHERE added >= %s AND added < %s AND (content LIKE %s OR content LIKE %s) RETURNING posts.id, posts.service, posts.\"user\";",
+            ('https://kemono.party' + web_path, new_filename, web_path, new_filename, mtime, mtime + datetime.timedelta(hours=1), f'%{web_path}%', f'%https://kemono.party{web_path}%')
         )
         updated_rows = cursor.rowcount
         post = cursor.fetchone()
@@ -84,7 +84,7 @@ def migrate_inline(path, migration_id):
         if updated_rows == 0:
             step = 2
             cursor = conn.cursor()
-            cursor.execute("UPDATE posts SET content = replace(content, %s, %s) WHERE content LIKE %s RETURNING posts.id, posts.service, posts.\"user\";", (web_path, new_filename, f'%{web_path}%'))
+            cursor.execute("UPDATE posts SET content = replace(replace(content, %s, %s), %s, %s) WHERE content LIKE %s OR content LIKE %s RETURNING posts.id, posts.service, posts.\"user\";", ('https://kemono.party' + web_path, new_filename, web_path, new_filename, f'%{web_path}%', f'%https://kemono.party{web_path}%'))
             updated_rows = cursor.rowcount
             post = cursor.fetchone()
             if (post):

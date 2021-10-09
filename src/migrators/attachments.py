@@ -74,7 +74,7 @@ def migrate_attachment(path, migration_id):
                   WITH selected_attachment as (
                     SELECT index as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
                     WHERE id = %s AND \"user\" = %s
-                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
+                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
                   UPDATE posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
@@ -82,7 +82,7 @@ def migrate_attachment(path, migration_id):
                     WHERE posts.id = selected_attachment.id AND posts."user" = selected_attachment."user" AND posts.service = selected_attachment.service 
                     RETURNING posts.id, posts.service, posts."user"
                 """,
-                (guessed_post_id, guessed_user_id, web_path, new_filename, f'"{new_filename}"')
+                (guessed_post_id, guessed_user_id, web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
             )
             updated_rows = cursor.rowcount
             post = cursor.fetchone()
@@ -101,7 +101,7 @@ def migrate_attachment(path, migration_id):
                   WITH selected_attachment as (
                     SELECT index as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
                     WHERE added >= %s AND added < %s
-                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
+                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
                   UPDATE posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
@@ -109,7 +109,7 @@ def migrate_attachment(path, migration_id):
                     WHERE posts.id = selected_attachment.id AND posts."user" = selected_attachment."user" AND posts.service = selected_attachment.service
                     RETURNING posts.id, posts.service, posts."user"
                 """,
-                (mtime, mtime + datetime.timedelta(hours=1), web_path, new_filename, f'"{new_filename}"')
+                (mtime, mtime + datetime.timedelta(hours=1), web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
             )
             updated_rows = cursor.rowcount
             post = cursor.fetchone()
@@ -127,7 +127,7 @@ def migrate_attachment(path, migration_id):
                 """
                   WITH selected_attachment as (
                     SELECT index as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
-                    WHERE (attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
+                    AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
                   UPDATE posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
@@ -135,7 +135,7 @@ def migrate_attachment(path, migration_id):
                     WHERE posts.id = selected_attachment.id AND posts."user" = selected_attachment."user" AND posts.service = selected_attachment.service
                     RETURNING posts.id, posts.service, posts."user"
                 """,
-                (web_path, new_filename, f'"{new_filename}"')
+                (web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
             )
             updated_rows = cursor.rowcount
             post = cursor.fetchone()
@@ -164,7 +164,7 @@ def migrate_attachment(path, migration_id):
                   WITH selected_attachment as (
                     SELECT index as json_index, server, channel, id FROM discord_posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
                     WHERE id = %s AND server = %s
-                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
+                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
                   UPDATE discord_posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
@@ -172,7 +172,7 @@ def migrate_attachment(path, migration_id):
                     WHERE discord_posts.id = selected_attachment.id AND discord_posts.channel = selected_attachment.channel AND discord_posts.server = selected_attachment.server
                     RETURNING discord_posts.server, discord_posts.channel, discord_posts.id
                 """,
-                (guessed_message_id, guessed_server_id, web_path, new_filename, f'"{new_filename}"')
+                (guessed_message_id, guessed_server_id, web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
             )
             updated_rows = cursor.rowcount
             message = cursor.fetchone()
@@ -189,7 +189,7 @@ def migrate_attachment(path, migration_id):
                 """
                   WITH selected_attachment as (
                     SELECT index as json_index, server, channel, id FROM discord_posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
-                    WHERE (attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
+                    WHERE (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
                   UPDATE discord_posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
@@ -197,7 +197,7 @@ def migrate_attachment(path, migration_id):
                     WHERE discord_posts.id = selected_attachment.id AND discord_posts.channel = selected_attachment.channel AND discord_posts.server = selected_attachment.server
                     RETURNING discord_posts.server, discord_posts.channel, discord_posts.id
                 """,
-                (web_path, new_filename, f'"{new_filename}"')
+                (web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
             )
             updated_rows = cursor.rowcount
             message = cursor.fetchone()
