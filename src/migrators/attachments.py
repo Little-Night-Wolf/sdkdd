@@ -127,7 +127,7 @@ def migrate_attachment(path, migration_id):
                 """
                   WITH selected_attachment as (
                     SELECT index as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
-                    AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
+                    WHERE (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
                   )
                   UPDATE posts
                     SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
