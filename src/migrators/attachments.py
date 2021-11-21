@@ -27,6 +27,9 @@ def migrate_attachment(path, migration_id):
     service = None
     post_id = None
     user_id = None
+    server_id = None
+    channel_id = None
+    message_id = None
     with open(path, 'rb') as f:
         # get hash and filename
         file_hash_raw = hashlib.sha256()
@@ -92,9 +95,38 @@ def migrate_attachment(path, migration_id):
                 post_id = post['id']
             cursor.close()
         
+        # Discord
+        if (updated_rows == 0 and len(web_path.split('/')) >= 4):
+            step = 2
+            guessed_message_id = web_path.split('/')[-2]
+            guessed_server_id = web_path.split('/')[-3]
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                  WITH selected_attachment as (
+                    SELECT index as json_index, server, channel, id FROM discord_posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
+                    WHERE id = %s AND server = %s
+                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
+                  )
+                  UPDATE discord_posts
+                    SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
+                    FROM selected_attachment
+                    WHERE discord_posts.id = selected_attachment.id AND discord_posts.channel = selected_attachment.channel AND discord_posts.server = selected_attachment.server
+                    RETURNING discord_posts.server, discord_posts.channel, discord_posts.id
+                """,
+                (guessed_message_id, guessed_server_id, web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
+            )
+            updated_rows = cursor.rowcount
+            message = cursor.fetchone()
+            if (message):
+                server_id = message['server']
+                channel_id = message['channel']
+                message_id = message['id']
+            cursor.close()
+        
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
-            step = 2
+            step = 3
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -121,7 +153,7 @@ def migrate_attachment(path, migration_id):
 
         # optimizations didn't work, scan the entire table
         if updated_rows == 0:
-            step = 3
+            step = 4
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -145,43 +177,6 @@ def migrate_attachment(path, migration_id):
                 post_id = post['id']
             cursor.close()
         
-        # log file post relationship (not discord)
-        if (not config.dry_run and updated_rows > 0 and service and user_id and post_id):
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO file_post_relationships (file_id, filename, service, \"user\", post, inline) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING", (file_id, os.path.basename(path), service, user_id, post_id, False))
-
-        # Discord
-        server_id = None
-        channel_id = None
-        message_id = None
-        if (updated_rows == 0 and len(web_path.split('/')) >= 4):
-            step = 4
-            guessed_message_id = web_path.split('/')[-2]
-            guessed_server_id = web_path.split('/')[-3]
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                  WITH selected_attachment as (
-                    SELECT index as json_index, server, channel, id FROM discord_posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
-                    WHERE id = %s AND server = %s
-                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
-                  )
-                  UPDATE discord_posts
-                    SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
-                    FROM selected_attachment
-                    WHERE discord_posts.id = selected_attachment.id AND discord_posts.channel = selected_attachment.channel AND discord_posts.server = selected_attachment.server
-                    RETURNING discord_posts.server, discord_posts.channel, discord_posts.id
-                """,
-                (guessed_message_id, guessed_server_id, web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
-            )
-            updated_rows = cursor.rowcount
-            message = cursor.fetchone()
-            if (message):
-                server_id = message['server']
-                channel_id = message['channel']
-                message_id = message['id']
-            cursor.close()
-
         if (updated_rows == 0):
             step = 5
             cursor = conn.cursor()
@@ -207,8 +202,12 @@ def migrate_attachment(path, migration_id):
                 message_id = message['id']
             cursor.close()
         
+        # log file post relationship (not discord)
+        if (not config.dry_run and updated_rows > 0 and service and user_id and post_id):
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO file_post_relationships (file_id, filename, service, \"user\", post, inline) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING", (file_id, os.path.basename(path), service, user_id, post_id, False))
         # log file post relationship (discord)
-        if (not config.dry_run and updated_rows > 0 and server_id and channel_id and message_id):
+        elif (not config.dry_run and updated_rows > 0 and server_id and channel_id and message_id):
             cursor = conn.cursor()
             cursor.execute("INSERT INTO file_discord_message_relationships (file_id, filename, server, channel, id) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING", (file_id, os.path.basename(path), server_id, channel_id, message_id))
         
