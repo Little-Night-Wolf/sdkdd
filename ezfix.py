@@ -36,11 +36,11 @@ for (post_service, post_user_id, post_id, old_file_location, new_file_location) 
         # replace
         post_data['content'] = post_data['content'].replace('https://kemono.party' + old_file_location, new_file_location)
         post_data['content'] = post_data['content'].replace(old_file_location, new_file_location)
-        if post_data['file']['path']:
+        if post_data['file'].get('path'):
             post_data['file']['path'] = post_data['file']['path'].replace('https://kemono.party' + old_file_location, new_file_location)
             post_data['file']['path'] = post_data['file']['path'].replace(old_file_location, new_file_location)
         for (i, _) in enumerate(post_data['attachments']):
-            if post_data['attachments'][i]['path']:
+            if post_data['attachments'][i].get('path'): # not truely needed, but...
                 post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file_location, new_file_location)
                 post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file_location, new_file_location)
 
