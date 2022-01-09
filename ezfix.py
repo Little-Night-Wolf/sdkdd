@@ -3,6 +3,7 @@ import config
 import psycopg2
 import sqlite3
 import json
+import requests
 from psycopg2.extras import RealDictCursor
 from bs4 import BeautifulSoup
 
@@ -60,4 +61,6 @@ for (post_service, post_user_id, post_id, old_file_location, new_file_location) 
         )
         cursor.execute(query, list(post_data.values()) + list((post_service, post_user_id, post_id,)))
 
+        print(f'{post_service}/{post_user_id}/{post_id} fixed ({old_file_location} > {new_file_location})')
+        requests.request('BAN', f"{config.ban_url}/{post_service}/user/{post_user_id}")
         psql_conn.commit()
