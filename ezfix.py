@@ -7,14 +7,7 @@ import requests
 from psycopg2.extras import RealDictCursor
 from bs4 import BeautifulSoup
 
-psql_conn = psycopg2.connect(
-    host = config.database_host,
-    dbname = config.database_dbname,
-    user = config.database_user,
-    password = config.database_password,
-    port = 5432,
-    cursor_factory=RealDictCursor
-)
+ = 
 
 sqlite_conn = sqlite3.connect('/dev/shm/baseline/processing.db')
 
@@ -30,37 +23,46 @@ posts_to_fix = sqlite_conn.execute('''
 ''')
 
 for (post_service, post_user_id, post_id, old_file_location, new_file_location) in posts_to_fix:
-    with psql_conn.cursor() as cursor:
-        cursor.execute('SELECT * FROM posts WHERE service = %s AND "user" = %s AND id = %s', (post_service, post_user_id, post_id,))
-        post_data = cursor.fetchone()
+    with psycopg2.connect(
+        host = config.database_host,
+        dbname = config.database_dbname,
+        user = config.database_user,
+        password = config.database_password,
+        port = 5432,
+        cursor_factory=RealDictCursor
+    ) as psql_conn:
+        with psql_conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM posts WHERE service = %s AND "user" = %s AND id = %s', (post_service, post_user_id, post_id,))
+            post_data = cursor.fetchone()
 
-        # replace
-        post_data['content'] = post_data['content'].replace('https://kemono.party' + old_file_location, new_file_location)
-        post_data['content'] = post_data['content'].replace(old_file_location, new_file_location)
-        if post_data['file'].get('path'):
-            post_data['file']['path'] = post_data['file']['path'].replace('https://kemono.party' + old_file_location, new_file_location)
-            post_data['file']['path'] = post_data['file']['path'].replace(old_file_location, new_file_location)
-        for (i, _) in enumerate(post_data['attachments']):
-            if post_data['attachments'][i].get('path'): # not truely needed, but...
-                post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file_location, new_file_location)
-                post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file_location, new_file_location)
+            # replace
+            post_data['content'] = post_data['content'].replace('https://kemono.party' + old_file_location, new_file_location)
+            post_data['content'] = post_data['content'].replace(old_file_location, new_file_location)
+            if post_data['file'].get('path'):
+                post_data['file']['path'] = post_data['file']['path'].replace('https://kemono.party' + old_file_location, new_file_location)
+                post_data['file']['path'] = post_data['file']['path'].replace(old_file_location, new_file_location)
+            for (i, _) in enumerate(post_data['attachments']):
+                if post_data['attachments'][i].get('path'): # not truely needed, but...
+                    post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file_location, new_file_location)
+                    post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file_location, new_file_location)
 
-        # format
-        post_data['embed'] = json.dumps(post_data['embed'])
-        post_data['file'] = json.dumps(post_data['file'])
-        for i in range(len(post_data['attachments'])):
-            post_data['attachments'][i] = json.dumps(post_data['attachments'][i])
+            # format
+            post_data['embed'] = json.dumps(post_data['embed'])
+            post_data['file'] = json.dumps(post_data['file'])
+            for i in range(len(post_data['attachments'])):
+                post_data['attachments'][i] = json.dumps(post_data['attachments'][i])
 
-        # update
-        columns = post_data.keys()
-        data = ['%s'] * len(post_data.values())
-        data[list(columns).index('attachments')] = '%s::jsonb[]'  # attachments
-        query = 'UPDATE posts SET {updates} WHERE {conditions}'.format(
-            updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
-            conditions='service = %s AND "user" = %s AND id = %s'
-        )
-        cursor.execute(query, list(post_data.values()) + list((post_service, post_user_id, post_id,)))
+            # update
+            columns = post_data.keys()
+            data = ['%s'] * len(post_data.values())
+            data[list(columns).index('attachments')] = '%s::jsonb[]'  # attachments
+            query = 'UPDATE posts SET {updates} WHERE {conditions}'.format(
+                updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
+                conditions='service = %s AND "user" = %s AND id = %s'
+            )
+            cursor.execute(query, list(post_data.values()) + list((post_service, post_user_id, post_id,)))
 
-        print(f'{post_service}/{post_user_id}/{post_id} fixed ({old_file_location} > {new_file_location})')
-        requests.request('BAN', f"{config.ban_url}/{post_service}/user/{post_user_id}")
-        psql_conn.commit()
+            print(f'{post_service}/{post_user_id}/{post_id} fixed ({old_file_location} > {new_file_location})')
+            requests.request('BAN', f"{config.ban_url}/{post_service}/user/{post_user_id}")
+            psql_conn.commit()
+        psql_conn.close()
