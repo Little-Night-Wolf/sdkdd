@@ -56,7 +56,7 @@ for (post_service, post_user_id, post_id, old_file_location, new_file_location) 
         data = ['%s'] * len(post_data.values())
         data[list(columns).index('attachments')] = '%s::jsonb[]'  # attachments
         query = 'UPDATE posts SET {updates} WHERE {conditions}'.format(
-            updates=','.join([f'"{column}" = %s' for column in columns]),
+            updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
             conditions='service = %s AND "user" = %s AND id = %s'
         )
         cursor.execute(query, list(post_data.values()) + list((post_service, post_user_id, post_id,)))
