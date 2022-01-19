@@ -1,4 +1,4 @@
-# creates or fixes 
+# creates or fixes file relationships
 # everyone but internal kemono team can ignore, again
 import os
 import config
