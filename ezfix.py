@@ -7,7 +7,7 @@ import requests
 from psycopg2.extras import RealDictCursor
 from bs4 import BeautifulSoup
 
-sqlite_conn = sqlite3.connect('/dev/shm/baseline/processing.db')
+sqlite_conn = sqlite3.connect('/root/migration_prep/baseline/processing.db')
 
 posts_to_fix = sqlite_conn.execute('''
     SELECT
