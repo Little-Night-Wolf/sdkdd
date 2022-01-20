@@ -32,7 +32,7 @@ for (post_service, post_user_id, post_id, old_file_location, new_file_location) 
         cursor_factory=RealDictCursor
     )
 
-    new_file_hash = os.path.splitext(os.path.basename(new_file_location))
+    new_file_hash = os.path.splitext(os.path.basename(new_file_location))[0]
     old_filename = os.path.basename(old_file_location)
 
     cursor = psql_conn.cursor()
@@ -45,7 +45,7 @@ for (post_service, post_user_id, post_id, old_file_location, new_file_location) 
         'service': post_service,
         'user': post_user_id,
         'post': post_id,
-        'inline': 'inline' in old_filename
+        'inline': 'inline/' in old_file_location
     })
     cursor.close()
     psql_conn.commit()
