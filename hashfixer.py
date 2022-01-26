@@ -2,6 +2,8 @@ import os
 import psycopg2
 import requests
 
+from src.utils import remove_prefix
+
 with open('./shinofix.txt', 'r') as f:
     for line in f:
         if line.strip():
@@ -16,33 +18,38 @@ with open('./shinofix.txt', 'r') as f:
             with conn.cursor() as cursor:
                 (_, correct_hash, old_path) = line.split(',', maxsplit=2)
                 (old_hash, old_ext) = os.path.splitext(os.path.basename(path))
-                old_path_without_root = old_path
                 old_path = '/' + old_path
-                correct_path = join(correct_hash[0:2], correct_hash[2:4], correct_hash + old_ext)
+                correct_path = join('/', correct_hash[0:2], correct_hash[2:4], correct_hash + old_ext)
 
-                # Update the hash for the bad file entry.
-                cursor.execute('UPDATE files SET hash = %(correct_hash)s WHERE hash = %(old_hash)s', {
-                    'correct_hash': correct_hash,
-                    'old_hash': old_hash
-                })
+                # Check if the correct hash already exists in the file table.
+                cursor.execute('SELECT * FROM files WHERE hash = %s', (correct_hash,))
+                existing_hash_record = cursor.fetchone()
+                if existing_hash_record:
+                    # If the record for the correct hash doesn't exist, find and update the hash of the old one.
+                    cursor.execute('UPDATE files SET hash = %s WHERE hash = %s', (correct_hash, old_hash))
+                else:
+                    # If the record for the correct hash does exist, update post relations that reference the old one to use the correct hash, then delete old hash.
+                    cursor.execute('''
+                        UPDATE file_post_relationships
+                        SET file_id = (SELECT id FROM files WHERE hash = %s)
+                        WHERE file_id = (SELECT id FROM files WHERE hash = %s)
+                        ''',
+                        (correct_hash, old_hash)
+                    )
+                    cursor.execute('DELETE FROM files WHERE hash = %s', (old_hash,))
+
                 print(f"File entry fixed ({old_path} > {correct_path})")
 
                 # Find posts that contain this file and replace in its data, just to be sure
                 cursor.execute('''
-                    WITH relationships as (
-                        SELECT *
-                        FROM file_post_relationships
-                        WHERE file_id = (SELECT id FROM files WHERE hash = %(correct_hash)s)
-                    )
+                    WITH rels as (SELECT * FROM file_post_relationships WHERE file_id = (SELECT id FROM files WHERE hash = %s))
                     SELECT *
                     FROM posts
                     WHERE
-                        posts.service = relationships.service
-                        AND posts."user" = relationships."user"
-                        AND posts.id = relationships.post
-                ''', {
-                    'correct_hash': correct_hash
-                })
+                        posts.service = rels.service
+                        AND posts."user" = rels."user"
+                        AND posts.id = rels.post
+                ''', (correct_hash,))
                 posts_to_scrub = cursor.fetchall()
 
                 for post in posts_to_scrub:
@@ -78,6 +85,8 @@ with open('./shinofix.txt', 'r') as f:
                     # conn.commit()
                     conn.rollback()
 
-                if os.path.isfile(path) and not os.path.isfile(os.path.join(config.data_dir, correct_path)):
+                old_path_without_prefix = remove_prefix(old_path, '/')
+                correct_path_without_prefix = remove_prefix(correct_path, '/')
+                if os.path.isfile(path) and not os.path.isfile(os.path.join(config.data_dir, correct_path_without_prefix)):
                     os.makedirs(os.path.join(config.data_dir, correct_hash[0:2], correct_hash[2:4]), exist_ok=True)
-                    os.rename(os.path.join(config.data_dir, old_path_without_root), os.path.join(config.data_dir, correct_path))
+                    os.rename(os.path.join(config.data_dir, old_path_without_prefix), os.path.join(config.data_dir, correct_path_without_prefix))
