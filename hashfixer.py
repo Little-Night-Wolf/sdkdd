@@ -16,7 +16,8 @@ with open('./shinofix.txt', 'r') as f:
             with conn.cursor() as cursor:
                 (_, correct_hash, old_path) = line.split(',', maxsplit=2)
                 (old_hash, old_ext) = os.path.splitext(os.path.basename(path))
-                old_path = '/' + path
+                old_path_without_root = old_path
+                old_path = '/' + old_path
                 correct_path = join(correct_hash[0:2], correct_hash[2:4], correct_hash + old_ext)
 
                 # Update the hash for the bad file entry.
@@ -76,3 +77,7 @@ with open('./shinofix.txt', 'r') as f:
                     
                     # conn.commit()
                     conn.rollback()
+
+                if os.path.isfile(path) and not os.path.isfile(os.path.join(config.data_dir, correct_path)):
+                    os.makedirs(os.path.join(config.data_dir, correct_hash[0:2], correct_hash[2:4]), exist_ok=True)
+                    os.rename(os.path.join(config.data_dir, old_path_without_root), os.path.join(config.data_dir, correct_path))
