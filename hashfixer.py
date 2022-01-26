@@ -75,3 +75,4 @@ with open('./shinofix.txt', 'r') as f:
                     requests.request('BAN', f"{config.ban_url}/{post['service']}/user/{post['user']}")
                     
                     # conn.commit()
+                    conn.rollback()
