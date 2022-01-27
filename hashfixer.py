@@ -1,6 +1,7 @@
 import os
 import psycopg2
 import requests
+import config
 
 from src.utils import remove_prefix
 
@@ -122,11 +123,14 @@ with open('./shinofix.txt', 'r') as f:
 
                     print(f"discord: {post['server']}/{post['channel']}/{post['id']} fixed ({old_path} > {correct_path})")
                     
-                # conn.commit()
-                conn.rollback()
+                if (not config.dry_run):
+                    conn.commit()
+                else:
+                    conn.rollback()
 
-                old_path_without_prefix = remove_prefix(old_path, '/')
-                correct_path_without_prefix = remove_prefix(correct_path, '/')
-                if os.path.isfile(path) and not os.path.isfile(os.path.join(config.data_dir, correct_path_without_prefix)):
-                    os.makedirs(os.path.join(config.data_dir, correct_hash[0:2], correct_hash[2:4]), exist_ok=True)
-                    os.rename(os.path.join(config.data_dir, old_path_without_prefix), os.path.join(config.data_dir, correct_path_without_prefix))
+                if (not config.dry_run):
+                    old_path_without_prefix = remove_prefix(old_path, '/')
+                    correct_path_without_prefix = remove_prefix(correct_path, '/')
+                    if os.path.isfile(path) and not os.path.isfile(os.path.join(config.data_dir, correct_path_without_prefix)):
+                        os.makedirs(os.path.join(config.data_dir, correct_hash[0:2], correct_hash[2:4]), exist_ok=True)
+                        os.rename(os.path.join(config.data_dir, old_path_without_prefix), os.path.join(config.data_dir, correct_path_without_prefix))
