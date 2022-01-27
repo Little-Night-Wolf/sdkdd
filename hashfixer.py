@@ -81,9 +81,49 @@ with open('./shinofix.txt', 'r') as f:
 
                     print(f"{post['service']}/{post['user']}/{post['id']} fixed ({old_path} > {correct_path})")
                     requests.request('BAN', f"{config.ban_url}/{post['service']}/user/{post['user']}")
+
+                # DICKSWORD
+                cursor.execute('''
+                    WITH rels as (SELECT * FROM file_discord_message_relationships WHERE file_id = (SELECT id FROM files WHERE hash = %s))
+                    SELECT *
+                    FROM discord_posts
+                    WHERE
+                        posts.server = rels.server
+                        AND posts.channel = rels.channel
+                        AND posts.id = rels.id
+                ''', (correct_hash,))
+                messages_to_scrub = cursor.fetchall()
+
+                for message in messages_to_scrub:
+                    for (i, _) in enumerate(post['attachments']):
+                        if post['attachments'][i].get('path'): # not truely needed, but...
+                            post['attachments'][i]['path'] = post['attachments'][i]['path'].replace('https://kemono.party' + old_path, correct_path)
+                            post['attachments'][i]['path'] = post['attachments'][i]['path'].replace(old_path, correct_path)
+
+                    # format
+                    for i in range(len(post['mentions'])):
+                        post['mentions'][i] = json.dumps(post['mentions'][i])
+                    for i in range(len(post['attachments'])):
+                        post['attachments'][i] = json.dumps(post['attachments'][i])
+                    for i in range(len(post['embeds'])):
+                        post['embeds'][i] = json.dumps(post['embeds'][i])
+
+                    # update
+                    columns = post.keys()
+                    data = ['%s'] * len(post.values())
+                    data[list(columns).index('mentions')] = '%s::jsonb[]'  # mentions
+                    data[list(columns).index('attachments')] = '%s::jsonb[]'  # attachments
+                    data[list(columns).index('embeds')] = '%s::jsonb[]'  # embeds
+                    query = 'UPDATE discord_posts SET {updates} WHERE {conditions}'.format(
+                        updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
+                        conditions='server = %s AND channel = %s AND id = %s'
+                    )
+                    cursor.execute(query, list(post.values()) + list((post['server'], post['channel'], post['id'],)))
+
+                    print(f"discord: {post['server']}/{post['channel']}/{post['id']} fixed ({old_path} > {correct_path})")
                     
-                    # conn.commit()
-                    conn.rollback()
+                # conn.commit()
+                conn.rollback()
 
                 old_path_without_prefix = remove_prefix(old_path, '/')
                 correct_path_without_prefix = remove_prefix(correct_path, '/')
