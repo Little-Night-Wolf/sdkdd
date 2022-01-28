@@ -81,7 +81,8 @@ with open('./shinofix.txt', 'r') as f:
                     cursor.execute(query, list(post.values()) + list((post['service'], post['user'], post['id'],)))
 
                     print(f"{post['service']}/{post['user']}/{post['id']} fixed ({old_path} > {correct_path})")
-                    requests.request('BAN', f"{config.ban_url}/{post['service']}/user/{post['user']}")
+                    if (not config.dry_run):
+                        requests.request('BAN', f"{config.ban_url}/{post['service']}/user/{post['user']}")
 
                 # DICKSWORD
                 cursor.execute('''
