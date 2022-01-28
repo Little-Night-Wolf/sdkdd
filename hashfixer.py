@@ -112,6 +112,7 @@ with open('./shinofix.txt', 'r') as f:
                             message['attachments'][i]['path'] = message['attachments'][i]['path'].replace(old_path, correct_path)
 
                     # format
+                    message['author'] = json.dumps(message['author'])
                     for i in range(len(message['mentions'])):
                         message['mentions'][i] = json.dumps(message['mentions'][i])
                     for i in range(len(message['attachments'])):
