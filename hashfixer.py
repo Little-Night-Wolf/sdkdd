@@ -26,7 +26,7 @@ with open('./shinofix.txt', 'r') as f:
                 # Check if the correct hash already exists in the file table.
                 cursor.execute('SELECT * FROM files WHERE hash = %s', (correct_hash,))
                 existing_hash_record = cursor.fetchone()
-                if existing_hash_record:
+                if not existing_hash_record:
                     # If the record for the correct hash doesn't exist, find and update the hash of the old one.
                     cursor.execute('UPDATE files SET hash = %s WHERE hash = %s', (correct_hash, old_hash))
                 else:
