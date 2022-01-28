@@ -3,6 +3,7 @@ import psycopg2
 import requests
 import config
 
+from psycopg2.extras import RealDictCursor
 from src.utils import remove_prefix
 
 with open('./shinofix.txt', 'r') as f:
@@ -14,7 +15,7 @@ with open('./shinofix.txt', 'r') as f:
                 user = config.database_user,
                 password = config.database_password,
                 port = 5432,
-                cursor_factory=psycopg2.extras.RealDictCursor
+                cursor_factory=RealDictCursor
             )
             with conn.cursor() as cursor:
                 (_, correct_hash, old_path) = line.split(',', maxsplit=2)
