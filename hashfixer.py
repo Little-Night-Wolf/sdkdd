@@ -19,9 +19,9 @@ with open('./shinofix.txt', 'r') as f:
             )
             with conn.cursor() as cursor:
                 (_, correct_hash, old_path) = line.split(',', maxsplit=2)
-                (old_hash, old_ext) = os.path.splitext(os.path.basename(path))
+                (old_hash, old_ext) = os.path.splitext(os.path.basename(old_path))
                 old_path = '/' + old_path
-                correct_path = join('/', correct_hash[0:2], correct_hash[2:4], correct_hash + old_ext)
+                correct_path = os.path.join('/', correct_hash[0:2], correct_hash[2:4], correct_hash + old_ext)
 
                 # Check if the correct hash already exists in the file table.
                 cursor.execute('SELECT * FROM files WHERE hash = %s', (correct_hash,))
@@ -46,7 +46,7 @@ with open('./shinofix.txt', 'r') as f:
                 cursor.execute('''
                     WITH rels as (SELECT * FROM file_post_relationships WHERE file_id = (SELECT id FROM files WHERE hash = %s))
                     SELECT *
-                    FROM posts
+                    FROM posts, rels
                     WHERE
                         posts.service = rels.service
                         AND posts."user" = rels."user"
@@ -81,7 +81,7 @@ with open('./shinofix.txt', 'r') as f:
                     )
                     cursor.execute(query, list(post.values()) + list((post['service'], post['user'], post['id'],)))
 
-                    print(f"{post['service']}/{post['user']}/{post['id']} fixed ({old_path} > {correct_path})")
+                    print(f"{post['service']}/{post['user']}/{post['id']} fixed ({old_path} -> {correct_path})")
                     if (not config.dry_run):
                         requests.request('BAN', f"{config.ban_url}/{post['service']}/user/{post['user']}")
 
@@ -89,11 +89,11 @@ with open('./shinofix.txt', 'r') as f:
                 cursor.execute('''
                     WITH rels as (SELECT * FROM file_discord_message_relationships WHERE file_id = (SELECT id FROM files WHERE hash = %s))
                     SELECT *
-                    FROM discord_posts
+                    FROM discord_posts, rels
                     WHERE
-                        posts.server = rels.server
-                        AND posts.channel = rels.channel
-                        AND posts.id = rels.id
+                        discord_posts.server = rels.server
+                        AND discord_posts.channel = rels.channel
+                        AND discord_posts.id = rels.id
                 ''', (correct_hash,))
                 messages_to_scrub = cursor.fetchall()
 
@@ -123,7 +123,7 @@ with open('./shinofix.txt', 'r') as f:
                     )
                     cursor.execute(query, list(post.values()) + list((post['server'], post['channel'], post['id'],)))
 
-                    print(f"discord: {post['server']}/{post['channel']}/{post['id']} fixed ({old_path} > {correct_path})")
+                    print(f"discord: {post['server']}/{post['channel']}/{post['id']} fixed ({old_path} -> {correct_path})")
                     
                 if (not config.dry_run):
                     conn.commit()
