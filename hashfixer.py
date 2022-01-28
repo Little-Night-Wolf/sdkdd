@@ -105,22 +105,22 @@ with open('./shinofix.txt', 'r') as f:
                 messages_to_scrub = cursor.fetchall()
 
                 for message in messages_to_scrub:
-                    for (i, _) in enumerate(post['attachments']):
-                        if post['attachments'][i].get('path'): # not truely needed, but...
-                            post['attachments'][i]['path'] = post['attachments'][i]['path'].replace('https://kemono.party' + old_path, correct_path)
-                            post['attachments'][i]['path'] = post['attachments'][i]['path'].replace(old_path, correct_path)
+                    for (i, _) in enumerate(message['attachments']):
+                        if message['attachments'][i].get('path'): # not truely needed, but...
+                            message['attachments'][i]['path'] = message['attachments'][i]['path'].replace('https://kemono.party' + old_path, correct_path)
+                            message['attachments'][i]['path'] = message['attachments'][i]['path'].replace(old_path, correct_path)
 
                     # format
-                    for i in range(len(post['mentions'])):
-                        post['mentions'][i] = json.dumps(post['mentions'][i])
-                    for i in range(len(post['attachments'])):
-                        post['attachments'][i] = json.dumps(post['attachments'][i])
-                    for i in range(len(post['embeds'])):
-                        post['embeds'][i] = json.dumps(post['embeds'][i])
+                    for i in range(len(message['mentions'])):
+                        message['mentions'][i] = json.dumps(message['mentions'][i])
+                    for i in range(len(message['attachments'])):
+                        message['attachments'][i] = json.dumps(message['attachments'][i])
+                    for i in range(len(message['embeds'])):
+                        message['embeds'][i] = json.dumps(message['embeds'][i])
 
                     # update
-                    columns = post.keys()
-                    data = ['%s'] * len(post.values())
+                    columns = message.keys()
+                    data = ['%s'] * len(message.values())
                     data[list(columns).index('mentions')] = '%s::jsonb[]'  # mentions
                     data[list(columns).index('attachments')] = '%s::jsonb[]'  # attachments
                     data[list(columns).index('embeds')] = '%s::jsonb[]'  # embeds
@@ -128,9 +128,9 @@ with open('./shinofix.txt', 'r') as f:
                         updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
                         conditions='server = %s AND channel = %s AND id = %s'
                     )
-                    cursor.execute(query, list(post.values()) + list((post['server'], post['channel'], post['id'],)))
+                    cursor.execute(query, list(message.values()) + list((message['server'], message['channel'], message['id'],)))
 
-                    print(f"discord: {post['server']}/{post['channel']}/{post['id']} fixed ({old_path} -> {correct_path})")
+                    print(f"discord: {message['server']}/{message['channel']}/{message['id']} fixed ({old_path} -> {correct_path})")
                     
                 if (not config.dry_run):
                     conn.commit()
