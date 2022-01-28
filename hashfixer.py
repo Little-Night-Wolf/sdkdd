@@ -133,10 +133,10 @@ with open('./shinofix.txt', 'r') as f:
                     correct_path_without_prefix = remove_prefix(correct_path, '/')
 
                     thumb_dir = config.thumb_dir or os.path.join(config.data_dir, 'thumbnail')
-                    if os.path.isfile(path) and not os.path.isfile(os.path.join(thumb_dir, correct_path_without_prefix)):
+                    if os.path.isfile(os.path.join(thumb_dir, old_path_without_prefix)) and not os.path.isfile(os.path.join(thumb_dir, correct_path_without_prefix)):
                         os.makedirs(os.path.join(thumb_dir, correct_hash[0:2], correct_hash[2:4]), exist_ok=True)
                         os.rename(os.path.join(thumb_dir, old_path_without_prefix), os.path.join(thumb_dir, correct_path_without_prefix))
                     
-                    if os.path.isfile(path) and not os.path.isfile(os.path.join(config.data_dir, correct_path_without_prefix)):
+                    if os.path.isfile(os.path.join(config.data_dir, old_path_without_prefix)) and not os.path.isfile(os.path.join(config.data_dir, correct_path_without_prefix)):
                         os.makedirs(os.path.join(config.data_dir, correct_hash[0:2], correct_hash[2:4]), exist_ok=True)
                         os.rename(os.path.join(config.data_dir, old_path_without_prefix), os.path.join(config.data_dir, correct_path_without_prefix))
