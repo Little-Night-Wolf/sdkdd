@@ -2,6 +2,7 @@ import os
 import psycopg2
 import requests
 import config
+import json
 
 from psycopg2.extras import RealDictCursor
 from src.utils import remove_prefix
