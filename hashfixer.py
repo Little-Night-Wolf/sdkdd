@@ -54,11 +54,11 @@ with open('./shinofix.txt', 'r') as f:
                 cursor.execute('''
                     WITH rels as (SELECT * FROM file_post_relationships WHERE file_id = (SELECT id FROM files WHERE hash = %s))
                     SELECT *
-                    FROM posts
+                    FROM posts, rels
                     WHERE
-                        posts.service = (SELECT service FROM rels WHERE service = posts.service)
-                        AND posts."user" = (SELECT "user" FROM rels WHERE "user" = posts."user")
-                        AND posts.id = (SELECT id FROM rels WHERE id = posts.id)
+                        posts.service = rels.service
+                        AND posts."user" = rels."user"
+                        AND posts.id = rels.post
                 ''', (correct_hash,))
                 posts_to_scrub = cursor.fetchall()
 
@@ -97,11 +97,11 @@ with open('./shinofix.txt', 'r') as f:
                 cursor.execute('''
                     WITH rels as (SELECT * FROM file_discord_message_relationships WHERE file_id = (SELECT id FROM files WHERE hash = %s))
                     SELECT *
-                    FROM discord_posts
+                    FROM discord_posts, rels
                     WHERE
-                        discord_posts.server = (SELECT server FROM rels WHERE server = discord_posts.server)
-                        AND discord_posts.channel = (SELECT channel FROM rels WHERE channel = discord_posts.channel)
-                        AND discord_posts.id = (SELECT id FROM rels WHERE id = discord_posts.id)
+                        discord_posts.server = rels.server
+                        AND discord_posts.channel = rels.channel
+                        AND discord_posts.id = rels.id
                 ''', (correct_hash,))
                 messages_to_scrub = cursor.fetchall()
 
