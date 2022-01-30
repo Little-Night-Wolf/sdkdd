@@ -46,6 +46,13 @@ with open('./shinofix.txt', 'r') as f:
                         ''',
                         (correct_hash, old_hash)
                     )
+                    cursor.execute('''
+                        UPDATE file_server_relationships
+                        SET file_id = (SELECT id FROM files WHERE hash = %s)
+                        WHERE file_id = (SELECT id FROM files WHERE hash = %s)
+                        ''',
+                        (correct_hash, old_hash)
+                    )
                     cursor.execute('DELETE FROM files WHERE hash = %s', (old_hash,))
 
                 print(f"File entry fixed ({old_path} > {correct_path})")
