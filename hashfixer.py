@@ -63,7 +63,7 @@ with open('./shinofix.txt', 'r') as f:
                                     posts.service = %s
                                     AND posts."user" = %s
                                     AND posts.id = %s
-                            ''', (relationship['service'], relationship['user'], relationship['id']))
+                            ''', (relationship['service'], relationship['user'], relationship['post']))
                             posts_to_scrub = cursor.fetchall()
 
                             for post in posts_to_scrub:
