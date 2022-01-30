@@ -107,9 +107,9 @@ with open('./shinofix.txt', 'r') as f:
                                 SELECT *
                                 FROM discord_posts
                                 WHERE
-                                    discord_posts.server = rels.server
-                                    AND discord_posts.channel = rels.channel
-                                    AND discord_posts.id = rels.id
+                                    discord_posts.server = %s
+                                    AND discord_posts.channel = %s
+                                    AND discord_posts.id = %s
                             ''', (relationship['server'], relationship['channel'], relationship['id']))
                             messages_to_scrub = cursor.fetchall()
 
