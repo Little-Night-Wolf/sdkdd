@@ -138,6 +138,9 @@ with open('./shinofix.txt', 'r') as f:
                                 # update
                                 columns = message.keys()
                                 data = ['%s'] * len(message.values())
+                                data[list(columns).index('mentions')] = '%s::jsonb[]'  # mentions
+                                data[list(columns).index('attachments')] = '%s::jsonb[]'  # attachments
+                                data[list(columns).index('embeds')] = '%s::jsonb[]'  # embeds
                                 query = 'UPDATE discord_posts SET {updates} WHERE {conditions}'.format(
                                     updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
                                     conditions='server = %s AND channel = %s AND id = %s'
