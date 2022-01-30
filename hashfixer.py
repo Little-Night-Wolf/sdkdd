@@ -85,10 +85,10 @@ with open('./shinofix.txt', 'r') as f:
                                         post['attachments'][i]['path'] = post['attachments'][i]['path'].replace(old_path, correct_path)
 
                                 # format
-                                post['embed'] = json.dumps(post['embed'])
-                                post['file'] = json.dumps(post['file'])
+                                post['embed'] = Json(post['embed'])
+                                post['file'] = Json(post['file'])
                                 for i in range(len(post['attachments'])):
-                                    post['attachments'][i] = json.dumps(post['attachments'][i])
+                                    post['attachments'][i] = Json(post['attachments'][i])
 
                                 # update
                                 columns = post.keys()
@@ -126,28 +126,25 @@ with open('./shinofix.txt', 'r') as f:
                                         message['attachments'][i]['path'] = message['attachments'][i]['path'].replace('https://kemono.party' + old_path, correct_path)
                                         message['attachments'][i]['path'] = message['attachments'][i]['path'].replace(old_path, correct_path)
 
-                                    # format
-                                    message['author'] = Json(message['author'])
-                                    for i in range(len(message['mentions'])):
-                                        message['mentions'][i] = Json(message['mentions'][i])
-                                    for i in range(len(message['attachments'])):
-                                        message['attachments'][i] = Json(message['attachments'][i])
-                                    for i in range(len(message['embeds'])):
-                                        message['embeds'][i] = Json(message['embeds'][i])
+                                # format
+                                message['author'] = Json(message['author'])
+                                for i in range(len(message['mentions'])):
+                                    message['mentions'][i] = Json(message['mentions'][i])
+                                for i in range(len(message['attachments'])):
+                                    message['attachments'][i] = Json(message['attachments'][i])
+                                for i in range(len(message['embeds'])):
+                                    message['embeds'][i] = Json(message['embeds'][i])
 
-                                    # update
-                                    columns = message.keys()
-                                    data = ['%s'] * len(message.values())
-                                    data[list(columns).index('mentions')] = '%s::jsonb[]'  # mentions
-                                    data[list(columns).index('attachments')] = '%s::jsonb[]'  # attachments
-                                    data[list(columns).index('embeds')] = '%s::jsonb[]'  # embeds
-                                    query = 'UPDATE discord_posts SET {updates} WHERE {conditions}'.format(
-                                        updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
-                                        conditions='server = %s AND channel = %s AND id = %s'
-                                    )
-                                    cursor.execute(query, list(message.values()) + list((message['server'], message['channel'], message['id'],)))
+                                # update
+                                columns = message.keys()
+                                data = ['%s'] * len(message.values())
+                                query = 'UPDATE discord_posts SET {updates} WHERE {conditions}'.format(
+                                    updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
+                                    conditions='server = %s AND channel = %s AND id = %s'
+                                )
+                                cursor.execute(query, list(message.values()) + list((message['server'], message['channel'], message['id'],)))
 
-                                    print(f"discord: {message['server']}/{message['channel']}/{message['id']} fixed ({old_path} -> {correct_path})")
+                                print(f"discord: {message['server']}/{message['channel']}/{message['id']} fixed ({old_path} -> {correct_path})")
                     
                 if (not config.dry_run):
                     conn.commit()
