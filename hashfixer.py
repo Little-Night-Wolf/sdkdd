@@ -4,7 +4,7 @@ import requests
 import config
 import json
 
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, Json
 from src.utils import remove_prefix
 
 with open('./shinofix.txt', 'r') as f:
@@ -129,13 +129,13 @@ with open('./shinofix.txt', 'r') as f:
                                         message['attachments'][i]['path'] = message['attachments'][i]['path'].replace(old_path, correct_path)
 
                                     # format
-                                    message['author'] = json.dumps(message['author'])
+                                    message['author'] = Json(message['author'])
                                     for i in range(len(message['mentions'])):
-                                        message['mentions'][i] = json.dumps(message['mentions'][i])
+                                        message['mentions'][i] = Json(message['mentions'][i])
                                     for i in range(len(message['attachments'])):
-                                        message['attachments'][i] = json.dumps(message['attachments'][i])
+                                        message['attachments'][i] = Json(message['attachments'][i])
                                     for i in range(len(message['embeds'])):
-                                        message['embeds'][i] = json.dumps(message['embeds'][i])
+                                        message['embeds'][i] = Json(message['embeds'][i])
 
                                     # update
                                     columns = message.keys()
