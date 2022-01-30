@@ -122,8 +122,6 @@ with open('./shinofix.txt', 'r') as f:
 
                             for message in messages_to_scrub:
                                 for (i, _) in enumerate(message['attachments']):
-                                    if str(type(message['attachments'][i])) == "<class 'str'>":
-                                        message['attachments'][i] = json.loads(message['attachments'][i])
                                     if message['attachments'][i].get('path'): # not truely needed, but...
                                         message['attachments'][i]['path'] = message['attachments'][i]['path'].replace('https://kemono.party' + old_path, correct_path)
                                         message['attachments'][i]['path'] = message['attachments'][i]['path'].replace(old_path, correct_path)
