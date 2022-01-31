@@ -31,29 +31,29 @@ with open('./shinofix.txt', 'r') as f:
                     # If the record for the correct hash doesn't exist, find and update the hash of the old one.
                     cursor.execute('UPDATE files SET hash = %s WHERE hash = %s', (correct_hash, old_hash))
                 else:
-                    # If the record for the correct hash does exist, update post relations that reference the old one to use the correct hash, then delete old hash.
-                    cursor.execute('''
-                        UPDATE file_post_relationships
-                        SET file_id = (SELECT id FROM files WHERE hash = %s)
-                        WHERE file_id = (SELECT id FROM files WHERE hash = %s)
-                        ''',
-                        (correct_hash, old_hash)
-                    )
-                    cursor.execute('''
-                        UPDATE file_discord_message_relationships
-                        SET file_id = (SELECT id FROM files WHERE hash = %s)
-                        WHERE file_id = (SELECT id FROM files WHERE hash = %s)
-                        ''',
-                        (correct_hash, old_hash)
-                    )
-                    cursor.execute('''
-                        UPDATE file_server_relationships
-                        SET file_id = (SELECT id FROM files WHERE hash = %s)
-                        WHERE file_id = (SELECT id FROM files WHERE hash = %s)
-                        ''',
-                        (correct_hash, old_hash)
-                    )
-                    cursor.execute('DELETE FROM files WHERE hash = %s', (old_hash,))
+                    relationship_tables = ['file_post_relationships', 'file_discord_message_relationships', 'file_server_relationships']
+                    with conn.cursor() as cursor:
+                        for table in relationship_tables:
+                            # Delete a post's references that use the old hash when it also references the new one.
+                            cursor.execute(f'''
+                                DELETE FROM {table} new_r
+                                USING {table} old_r
+                                WHERE
+                                    new_r.file_id = (SELECT id FROM files WHERE hash = %(old_hash)s)
+                                    AND old_r.file_id = (SELECT id FROM files WHERE hash = %(correct_hash)s)
+                            ''', {'old_hash': old_hash, 'correct_hash': correct_hash})
+                            # If the record for the correct hash does exist, update post relations that reference the old one to use the correct hash, then delete old hash.
+                            cursor.execute(f'''
+                                UPDATE {table}
+                                SET file_id = (SELECT id FROM files WHERE hash = %(correct_hash)s)
+                                WHERE file_id = (SELECT id FROM files WHERE hash = %(old_hash)s)
+                                ''',
+                                {
+                                    'old_hash': old_hash,
+                                    'correct_hash': correct_hash
+                                }
+                            )
+                            cursor.execute('DELETE FROM files WHERE hash = %s', (old_hash,))
 
                 print(f"File entry fixed ({old_path} > {correct_path})")
 
