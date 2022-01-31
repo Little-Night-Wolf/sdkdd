@@ -53,7 +53,7 @@ with open('./shinofix.txt', 'r') as f:
                                     'correct_hash': correct_hash
                                 }
                             )
-                            cursor.execute('DELETE FROM files WHERE hash = %s', (old_hash,))
+                        cursor.execute('DELETE FROM files WHERE hash = %s', (old_hash,))
 
                 print(f"File entry fixed ({old_path} > {correct_path})")
 
