@@ -19,7 +19,7 @@ with open('./shinofix.txt', 'r') as f:
                 cursor_factory=RealDictCursor
             )
             with conn.cursor() as cursor:
-                (_, correct_hash, old_path) = line.split(',', maxsplit=2)
+                (_, correct_hash, old_path) = line.strip().split(',', maxsplit=2)
                 (old_hash, old_ext) = os.path.splitext(os.path.basename(old_path))
                 old_path = '/' + old_path
                 correct_path = os.path.join('/', correct_hash[0:2], correct_hash[2:4], correct_hash + old_ext)
