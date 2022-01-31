@@ -36,8 +36,8 @@ with open('./shinofix.txt', 'r') as f:
                         for table in relationship_tables:
                             # Delete a post's references that use the old hash when it also references the new one.
                             cursor.execute(f'''
-                                DELETE FROM {table} new_r
-                                USING {table} old_r
+                                DELETE FROM {table} old_r
+                                USING {table} new_r
                                 WHERE
                                     new_r.file_id = (SELECT id FROM files WHERE hash = %(old_hash)s)
                                     AND old_r.file_id = (SELECT id FROM files WHERE hash = %(correct_hash)s)
