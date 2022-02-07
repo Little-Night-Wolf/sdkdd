@@ -4,6 +4,7 @@ import os
 import time
 import click
 import psycopg2
+import sqlite3
 from click_default_group import DefaultGroup
 
 from src.migrators.files import migrate_file
@@ -78,14 +79,30 @@ def apply():
         print('(You are running `sdkdd` dry. Nothing will actually be updated/moved. Feel free to exit anytime.)\n')
     
     with multiprocessing.Pool(config.processes or multiprocessing.cpu_count()) as pool:
-        if (config.scan_files):
-            scan_files_for_apply(pool, timestamp)
-        if (config.scan_attachments):
-            scan_attachments_for_apply(pool, timestamp)
-        if (config.scan_inline):
-            scan_inline_for_apply(pool, timestamp)
-        pool.close()
-        pool.join()
+        if not config.sql_file:
+            if (config.scan_files):
+                scan_files_for_apply(pool, timestamp)
+            if (config.scan_attachments):
+                scan_attachments_for_apply(pool, timestamp)
+            if (config.scan_inline):
+                scan_inline_for_apply(pool, timestamp)
+            pool.close()
+            pool.join()
+        else:
+            sqlite_conn = sqlite3.connect('/root/migration_prep/baseline/processing.db')
+            posts_to_fix = sqlite_conn.execute('''
+                SELECT  posts_dump.service,
+                    posts_dump.user_id,
+                    posts_dump.post_id,
+                    posts_dump.file_path,
+                FROM    posts_dump, hashdeep_to_migrate
+                WHERE   posts_dump.file_path = hashdeep_to_migrate.path
+            ''')
+            for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
+                if 'files' in file_location and config.scan_files:
+                    pool.apply_async(migrate_file, args=(file_location, timestamp, post_service, post_user_id, post_id))
+            pool.close()
+            pool.join()
 
 @cli.command()
 def revert():

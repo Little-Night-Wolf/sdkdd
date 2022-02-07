@@ -1,4 +1,5 @@
 data_dir = './data'
+sql_file = None # optional sql file to accelerate lookups. Generate with (???, not in repo yet)
 thumb_dir = None # custom thumb dir instead of data_dir + "/thumbnail" (optional)
 dry_run = True # set this to False to let sdkdd operate on the database and move files, for realsies.
 # database info

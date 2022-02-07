@@ -14,7 +14,7 @@ from retry import retry
 
 @trace_unhandled_exceptions
 @retry(tries=5)
-def migrate_file(path: str, migration_id):
+def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id=None):
     # check if the file is special (symlink, hardlink, empty) and return if so
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path):
         return
@@ -24,9 +24,9 @@ def migrate_file(path: str, migration_id):
     
     file_ext = os.path.splitext(path)[1]
     web_path = path.replace(remove_suffix(config.data_dir, '/'), '')
-    service = None
-    post_id = None
-    user_id = None
+    service = _service or None
+    post_id = _post_id or None
+    user_id = _user_id or None
     with open(path, 'rb') as f:
         # get hash and filename
         file_hash_raw = hashlib.sha256()
@@ -68,18 +68,21 @@ def migrate_file(path: str, migration_id):
         if (len(web_path.split('/')) >= 4):
             guessed_post_id = web_path.split('/')[-2]
             guessed_user_id = web_path.split('/')[-3]
-            cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE id = %s AND \"user\" = %s AND (file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
-                (f'"{new_filename}"', guessed_post_id, guessed_user_id, web_path, 'https://kemono.party' + web_path, new_filename)
-            )
-            updated_rows = cursor.rowcount
-            post = cursor.fetchone()
-            if (post):
-                service = post['service']
-                user_id = post['user']
-                post_id = post['id']
-            cursor.close()
+        else:
+            guessed_post_id = post_id
+            guessed_user_id = user_id
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE id = %s AND \"user\" = %s AND (file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
+            (f'"{new_filename}"', guessed_post_id, guessed_user_id, web_path, 'https://kemono.party' + web_path, new_filename)
+        )
+        updated_rows = cursor.rowcount
+        post = cursor.fetchone()
+        if (post):
+            service = post['service']
+            user_id = post['user']
+            post_id = post['id']
+        cursor.close()
         
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
