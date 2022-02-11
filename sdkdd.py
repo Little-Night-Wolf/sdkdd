@@ -87,7 +87,7 @@ def apply():
             if (config.scan_inline):
                 scan_inline_for_apply(pool, timestamp)
         else:
-            sqlite_conn = sqlite3.connect('/root/migration_prep/baseline/processing.db')
+            sqlite_conn = sqlite3.connect(config.sql_file)
             posts_to_fix = sqlite_conn.execute('''
                 SELECT
                     posts_dump.service,
