@@ -96,7 +96,7 @@ def apply():
                     posts_dump.file_path
                 FROM posts_dump, hashdeep_to_migrate
                 WHERE
-                    posts_dump.posts_dump = hashdeep_to_migrate.path
+                    posts_dump.file_path = hashdeep_to_migrate.path
                     AND posts_dump.file_path not in (
                       SELECT posts_dump.file_path
                       FROM posts_dump a, migration_log b
