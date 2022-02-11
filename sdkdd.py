@@ -86,23 +86,34 @@ def apply():
                 scan_attachments_for_apply(pool, timestamp)
             if (config.scan_inline):
                 scan_inline_for_apply(pool, timestamp)
-            pool.close()
-            pool.join()
         else:
             sqlite_conn = sqlite3.connect('/root/migration_prep/baseline/processing.db')
             posts_to_fix = sqlite_conn.execute('''
-                SELECT  posts_dump.service,
+                SELECT
+                    posts_dump.service,
                     posts_dump.user_id,
                     posts_dump.post_id,
                     posts_dump.file_path,
-                FROM    posts_dump, hashdeep_to_migrate
-                WHERE   posts_dump.file_path = hashdeep_to_migrate.path
+                FROM posts_dump, hashdeep_to_migrate
+                WHERE
+                    posts_dump.posts_dump = hashdeep_to_migrate.path
+                    AND posts_dump.file_path not in (
+                      SELECT posts_dump.file_path
+                      FROM posts_dump a, migration_log b
+                      WHERE b.migration_original_path = a.file_path;
+                    );
             ''')
             for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
-                if 'files' in file_location and config.scan_files:
-                    pool.apply_async(migrate_file, args=(file_location, timestamp, post_service, post_user_id, post_id))
-            pool.close()
-            pool.join()
+                migrator_args = (file_location, timestamp, post_service, post_user_id, post_id)
+                if file_location.startswith('/files/') and config.scan_files:
+                    pool.apply_async(migrate_file, args=migrator_args)
+                elif file_location.startswith('/attachments/') and config.scan_attachments:
+                    pool.apply_async(migrate_attachment, args=migrator_args)
+                elif file_location.startswith('/inline/') and config.scan_inline:
+                    pool.apply_async(migrate_inline, args=migrator_args)
+
+        pool.close()
+        pool.join()
 
 @cli.command()
 def revert():

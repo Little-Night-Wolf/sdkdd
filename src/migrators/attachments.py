@@ -1,6 +1,6 @@
 import hashlib
 import os
-from ..utils import trace_unhandled_exceptions, remove_suffix, remove_prefix
+from ..utils import trace_unhandled_exceptions, remove_suffix, remove_prefix, replace_file_from_post, replace_file_from_discord_message
 import config
 import psycopg2
 import pathlib
@@ -14,7 +14,16 @@ from retry import retry
 
 @trace_unhandled_exceptions
 @retry(tries=5)
-def migrate_attachment(path, migration_id):
+def migrate_attachment(
+    path,
+    migration_id,
+    _service=None,
+    _user_id=None,
+    _post_id=None,
+    _server_id=None,
+    _channel_id=None,
+    _message_id=None
+):
     # check if the file is special (symlink, hardlink, empty) and return if so
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path) or path.endswith('.temp'):
         return
@@ -24,12 +33,12 @@ def migrate_attachment(path, migration_id):
     
     file_ext = os.path.splitext(path)[1]
     web_path = path.replace(remove_suffix(config.data_dir, '/'), '')
-    service = None
-    post_id = None
-    user_id = None
-    server_id = None
-    channel_id = None
-    message_id = None
+    service = _service or None
+    post_id = _post_id or None
+    user_id = _user_id or None
+    server_id = _server_id or None
+    channel_id = _channel_id or None
+    message_id = _message_id or None
     with open(path, 'rb') as f:
         # get hash and filename
         file_hash_raw = hashlib.sha256()
@@ -50,11 +59,11 @@ def migrate_attachment(path, migration_id):
         ctime = datetime.datetime.fromtimestamp(fname.stat().st_ctime)
 
         conn = psycopg2.connect(
-            host = config.database_host,
-            dbname = config.database_dbname,
-            user = config.database_user,
-            password = config.database_password,
-            port = 5432,
+            host=config.database_host,
+            dbname=config.database_dbname,
+            user=config.database_user,
+            password=config.database_password,
+            port=5432,
             cursor_factory=RealDictCursor
         )
 
@@ -65,142 +74,99 @@ def migrate_attachment(path, migration_id):
             file_id = cursor.fetchone()['id']
         
         updated_rows = 0
-        step = 1
+        step = 99
+        if (service and user_id and post_id):
+            (updated_rows, _) = replace_file_from_post(
+                conn,
+                service=service,
+                user_id=user_id,
+                post_id=post_id,
+                old_file=web_path,
+                new_file=new_filename
+            )
+
+        if (server_id and channel_id and message_id):
+            (updated_rows, _) = replace_file_from_discord_message(
+                conn,
+                server_id=server_id,
+                channel_id=channel_id,
+                message_id=message_id,
+                old_file=web_path,
+                new_file=new_filename
+            )
+
         # update "attachment" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to derive the user and post id from the original path
-        if (len(web_path.split('/')) >= 4):
+        if (len(web_path.split('/')) >= 4 and updated_rows == 0):
+            step = 1
             guessed_post_id = web_path.split('/')[-2]
             guessed_user_id = web_path.split('/')[-3]
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                  WITH selected_attachment as (
-                    SELECT index as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
-                    WHERE id = %s AND \"user\" = %s
-                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
-                  )
-                  UPDATE posts
-                    SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
-                    FROM selected_attachment
-                    WHERE posts.id = selected_attachment.id AND posts."user" = selected_attachment."user" AND posts.service = selected_attachment.service 
-                    RETURNING posts.id, posts.service, posts."user"
-                """,
-                (guessed_post_id, guessed_user_id, web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
+            (updated_rows, post) = replace_file_from_post(
+                conn,
+                user_id=guessed_user_id,
+                post_id=guessed_post_id,
+                old_file=web_path,
+                new_file=new_filename
             )
-            updated_rows = cursor.rowcount
-            post = cursor.fetchone()
             if (post):
                 service = post['service']
                 user_id = post['user']
                 post_id = post['id']
-            cursor.close()
         
         # Discord
         if (updated_rows == 0 and len(web_path.split('/')) >= 4):
             step = 2
-            guessed_message_id = web_path.split('/')[-2]
-            guessed_server_id = web_path.split('/')[-3]
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                  WITH selected_attachment as (
-                    SELECT index as json_index, server, channel, id FROM discord_posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
-                    WHERE id = %s AND server = %s
-                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
-                  )
-                  UPDATE discord_posts
-                    SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
-                    FROM selected_attachment
-                    WHERE discord_posts.id = selected_attachment.id AND discord_posts.channel = selected_attachment.channel AND discord_posts.server = selected_attachment.server
-                    RETURNING discord_posts.server, discord_posts.channel, discord_posts.id
-                """,
-                (guessed_message_id, guessed_server_id, web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
+            (updated_rows, message) = replace_file_from_discord_message(
+                conn,
+                message_id=web_path.split('/')[-2],
+                server_id=web_path.split('/')[-3],
+                old_file=web_path,
+                new_file=new_filename
             )
-            updated_rows = cursor.rowcount
-            message = cursor.fetchone()
             if (message):
                 server_id = message['server']
                 channel_id = message['channel']
                 message_id = message['id']
-            cursor.close()
         
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
             step = 3
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                  WITH selected_attachment as (
-                    SELECT index as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
-                    WHERE added >= %s AND added < %s
-                      AND (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
-                  )
-                  UPDATE posts
-                    SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
-                    FROM selected_attachment
-                    WHERE posts.id = selected_attachment.id AND posts."user" = selected_attachment."user" AND posts.service = selected_attachment.service
-                    RETURNING posts.id, posts.service, posts."user"
-                """,
-                (mtime, mtime + datetime.timedelta(hours=1), web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
+            (updated_rows, post) = replace_file_from_post(
+                conn,
+                min_time=mtime,
+                max_time=mtime + datetime.timedelta(hours=1),
+                old_file=web_path,
+                new_file=new_filename
             )
-            updated_rows = cursor.rowcount
-            post = cursor.fetchone()
             if (post):
                 service = post['service']
                 user_id = post['user']
                 post_id = post['id']
-            cursor.close()
 
         # optimizations didn't work, scan the entire table
         if updated_rows == 0:
             step = 4
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                  WITH selected_attachment as (
-                    SELECT index as json_index, service, "user", id FROM posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
-                    WHERE (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
-                  )
-                  UPDATE posts
-                    SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
-                    FROM selected_attachment
-                    WHERE posts.id = selected_attachment.id AND posts."user" = selected_attachment."user" AND posts.service = selected_attachment.service
-                    RETURNING posts.id, posts.service, posts."user"
-                """,
-                (web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
+            (updated_rows, post) = replace_file_from_post(
+                conn,
+                old_file=web_path,
+                new_file=new_filename
             )
-            updated_rows = cursor.rowcount
-            post = cursor.fetchone()
             if (post):
                 service = post['service']
                 user_id = post['user']
                 post_id = post['id']
-            cursor.close()
         
         if (updated_rows == 0):
             step = 5
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                  WITH selected_attachment as (
-                    SELECT index as json_index, server, channel, id FROM discord_posts, jsonb_array_elements(to_jsonb(attachments)) WITH ORDINALITY arr(attachment, index)
-                    WHERE (attachment ->> 'path' = %s OR attachment ->> 'path' = %s OR attachment ->> 'path' = %s)
-                  )
-                  UPDATE discord_posts
-                    SET attachments[selected_attachment.json_index] = jsonb_set(attachments[selected_attachment.json_index], '{path}', %s, false)
-                    FROM selected_attachment
-                    WHERE discord_posts.id = selected_attachment.id AND discord_posts.channel = selected_attachment.channel AND discord_posts.server = selected_attachment.server
-                    RETURNING discord_posts.server, discord_posts.channel, discord_posts.id
-                """,
-                (web_path, 'https://kemono.party' + web_path, new_filename, f'"{new_filename}"')
+            (updated_rows, message) = replace_file_from_discord_message(
+                conn,
+                old_file=web_path,
+                new_file=new_filename
             )
-            updated_rows = cursor.rowcount
-            message = cursor.fetchone()
             if (message):
                 server_id = message['server']
                 channel_id = message['channel']
                 message_id = message['id']
-            cursor.close()
         
         # log file post relationship (not discord)
         if (not config.dry_run and updated_rows > 0 and service and user_id and post_id):

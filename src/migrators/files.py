@@ -38,7 +38,7 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         mime = magic.from_file(path, mime=True)
         if (config.fix_extensions):
             file_ext = mimetypes.guess_extension(mime or 'application/octet-stream', strict=False)
-            new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext or '.bin') if config.fix_jpe else file_ext or '.bin')
+            new_filename = new_filename + (re.sub('^.jpe$', '. jpg', file_ext or '.bin') if config.fix_jpe else file_ext or '.bin')
         else:
             new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext or '.bin') if config.fix_jpe else file_ext or '.bin')
         
@@ -47,11 +47,11 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         ctime = datetime.datetime.fromtimestamp(fname.stat().st_ctime)
 
         conn = psycopg2.connect(
-            host = config.database_host,
-            dbname = config.database_dbname,
-            user = config.database_user,
-            password = config.database_password,
-            port = 5432,
+            host=config.database_host,
+            dbname=config.database_dbname,
+            user=config.database_user,
+            password=config.database_password,
+            port=5432,
             cursor_factory=RealDictCursor
         )
 
@@ -62,27 +62,54 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
             file_id = cursor.fetchone()['id']
         
         updated_rows = 0
-        step = 1
-        # update "file" path references in db, using different strategies to speed the operation up
+        step = 99
+        if (service and user_id and post_id):
+            with conn.cursor() as cursor:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE posts
+                    SET file = jsonb_set(file, '{path}', %s, false)
+                    WHERE
+                        service = %s
+                        AND \"user\" = %s
+                        AND id = %s
+                        AND (file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s)
+                    RETURNING posts.id, posts.service, posts.\"user\";
+                    """, (
+                    f'"{new_filename}"',
+                    service,
+                    user_id,
+                    post_id,
+                    web_path,
+                    'https://kemono.party' + web_path,
+                    new_filename)
+                )
+                updated_rows = cursor.rowcount
+                post = cursor.fetchone()
+                if (post):
+                    service = post['service']
+                    user_id = post['user']
+                    post_id = post['id']
+
+        # Update "file" path references in database, using different strategies to speed the operation up.
         # strat 1: attempt to derive the user and post id from the original path
-        if (len(web_path.split('/')) >= 4):
+        if (len(web_path.split('/')) >= 4 and updated_rows == 0):
+            step = 1
             guessed_post_id = web_path.split('/')[-2]
             guessed_user_id = web_path.split('/')[-3]
-        else:
-            guessed_post_id = post_id
-            guessed_user_id = user_id
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE id = %s AND \"user\" = %s AND (file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
-            (f'"{new_filename}"', guessed_post_id, guessed_user_id, web_path, 'https://kemono.party' + web_path, new_filename)
-        )
-        updated_rows = cursor.rowcount
-        post = cursor.fetchone()
-        if (post):
-            service = post['service']
-            user_id = post['user']
-            post_id = post['id']
-        cursor.close()
+
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE id = %s AND \"user\" = %s AND (file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
+                (f'"{new_filename}"', guessed_post_id, guessed_user_id, web_path, 'https://kemono.party' + web_path, new_filename)
+            )
+            updated_rows = cursor.rowcount
+            post = cursor.fetchone()
+            if (post):
+                service = post['service']
+                user_id = post['user']
+                post_id = post['id']
+            cursor.close()
         
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:

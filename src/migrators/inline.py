@@ -1,6 +1,6 @@
 import hashlib
 import os
-from ..utils import trace_unhandled_exceptions, remove_suffix, remove_prefix
+from ..utils import trace_unhandled_exceptions, remove_suffix, remove_prefix, replace_file_from_post
 import config
 import psycopg2
 import pathlib
@@ -14,7 +14,13 @@ from retry import retry
 
 @trace_unhandled_exceptions
 @retry(tries=5)
-def migrate_inline(path, migration_id):
+def migrate_inline(
+    path,
+    migration_id,
+    _service=None,
+    _user_id=None,
+    _post_id=None,
+):
     # check if the file is special (symlink, hardlink, empty) and return if so
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path):
         return
@@ -24,9 +30,9 @@ def migrate_inline(path, migration_id):
     
     file_ext = os.path.splitext(path)[1]
     web_path = path.replace(remove_suffix(config.data_dir, '/'), '')
-    service = None
-    post_id = None
-    user_id = None
+    service = _service or None
+    post_id = _post_id or None
+    user_id = _user_id or None
     with open(path, 'rb') as f:
         # get hash and filename
         file_hash_raw = hashlib.sha256()
@@ -47,11 +53,11 @@ def migrate_inline(path, migration_id):
         ctime = datetime.datetime.fromtimestamp(fname.stat().st_ctime)
 
         conn = psycopg2.connect(
-            host = config.database_host,
-            dbname = config.database_dbname,
-            user = config.database_user,
-            password = config.database_password,
-            port = 5432,
+            host=config.database_host,
+            dbname=config.database_dbname,
+            user=config.database_user,
+            password=config.database_password,
+            port=5432,
             cursor_factory=RealDictCursor
         )
 
@@ -62,36 +68,46 @@ def migrate_inline(path, migration_id):
             file_id = cursor.fetchone()['id']
 
         updated_rows = 0
+        step = 99
+        if (service and user_id and post_id):
+            (updated_rows, _) = replace_file_from_post(
+                conn,
+                service=service,
+                user_id=user_id,
+                post_id=post_id,
+                old_file=web_path,
+                new_file=new_filename
+            )
         # update "inline" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
-        step = 1
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE posts SET content = replace(replace(content, %s, %s), %s, %s) WHERE added >= %s AND added < %s AND (content LIKE %s OR content LIKE %s) RETURNING posts.id, posts.service, posts.\"user\";",
-            ('https://kemono.party' + web_path, new_filename, web_path, new_filename, mtime, mtime + datetime.timedelta(hours=1), f'%{web_path}%', f'%https://kemono.party{web_path}%')
-        )
-        updated_rows = cursor.rowcount
-        post = cursor.fetchone()
-        if (post):
-            service = post['service']
-            user_id = post['user']
-            post_id = post['id']
-        cursor.close()
+        if updated_rows == 0:
+            step = 1
+            (updated_rows, post) = replace_file_from_post(
+                conn,
+                min_time=mtime,
+                max_time=mtime + datetime.timedelta(hours=1),
+                old_file=web_path,
+                new_file=new_filename
+            )
+            if (post):
+                service = post['service']
+                user_id = post['user']
+                post_id = post['id']
         
         # NOTE: Check if filename is integer and use that for added time optimization.
         # optimizations didn't work, simply find and replace references in inline text.
         # ... this will take a very long time.
         if updated_rows == 0:
             step = 2
-            cursor = conn.cursor()
-            cursor.execute("UPDATE posts SET content = replace(replace(content, %s, %s), %s, %s) WHERE content LIKE %s OR content LIKE %s RETURNING posts.id, posts.service, posts.\"user\";", ('https://kemono.party' + web_path, new_filename, web_path, new_filename, f'%{web_path}%', f'%https://kemono.party{web_path}%'))
-            updated_rows = cursor.rowcount
-            post = cursor.fetchone()
+            (updated_rows, post) = replace_file_from_post(
+                conn,
+                old_file=web_path,
+                new_file=new_filename
+            )
             if (post):
                 service = post['service']
                 user_id = post['user']
                 post_id = post['id']
-            cursor.close()
         
         # log file post relationship (not discord)
         if (not config.dry_run and updated_rows > 0 and service and user_id and post_id):
