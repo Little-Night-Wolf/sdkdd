@@ -100,8 +100,8 @@ def apply():
                     AND posts_dump.file_path not in (
                       SELECT posts_dump.file_path
                       FROM posts_dump a, migration_log b
-                      WHERE b.migration_original_path = a.file_path;
-                    );
+                      WHERE b.migration_original_path = a.file_path
+                    )
             ''')
             for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
                 migrator_args = (file_location, timestamp, post_service, post_user_id, post_id)
