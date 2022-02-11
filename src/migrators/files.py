@@ -38,7 +38,7 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         mime = magic.from_file(path, mime=True)
         if (config.fix_extensions):
             file_ext = mimetypes.guess_extension(mime or 'application/octet-stream', strict=False)
-            new_filename = new_filename + (re.sub('^.jpe$', '. jpg', file_ext or '.bin') if config.fix_jpe else file_ext or '.bin')
+            new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext or '.bin') if config.fix_jpe else file_ext or '.bin')
         else:
             new_filename = new_filename + (re.sub('^.jpe$', '.jpg', file_ext or '.bin') if config.fix_jpe else file_ext or '.bin')
         
