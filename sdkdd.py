@@ -93,7 +93,7 @@ def apply():
                     posts_dump.service,
                     posts_dump.user_id,
                     posts_dump.post_id,
-                    posts_dump.file_path,
+                    posts_dump.file_path
                 FROM posts_dump, hashdeep_to_migrate
                 WHERE
                     posts_dump.posts_dump = hashdeep_to_migrate.path
