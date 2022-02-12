@@ -102,7 +102,7 @@ def apply():
                       FROM posts_dump a, migration_log b
                       WHERE b.migration_original_path = a.file_path
                     )
-            ''')
+            ''').fetchall()
             for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
                 migrator_args = (file_location, timestamp, post_service, post_user_id, post_id)
                 if file_location.startswith('/files/') and config.scan_files:
