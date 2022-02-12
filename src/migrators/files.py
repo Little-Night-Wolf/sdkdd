@@ -12,6 +12,7 @@ import requests
 from psycopg2.extras import RealDictCursor
 from retry import retry
 
+
 @trace_unhandled_exceptions
 @retry(tries=5)
 def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id=None):

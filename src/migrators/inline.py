@@ -12,6 +12,7 @@ import requests
 from psycopg2.extras import RealDictCursor
 from retry import retry
 
+
 @trace_unhandled_exceptions
 @retry(tries=5)
 def migrate_inline(

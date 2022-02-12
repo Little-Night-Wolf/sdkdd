@@ -62,15 +62,15 @@ def replace_file_from_post(
             original_post_data = post_data
 
             # Replace.
-            post_data['content'] = post_data['content'].replace('https://kemono.party' + old_string, new_string)
-            post_data['content'] = post_data['content'].replace(old_string, new_string)
+            post_data['content'] = post_data['content'].replace('https://kemono.party' + old_file, new_file)
+            post_data['content'] = post_data['content'].replace(old_file, new_file)
             if post_data['file'].get('path'):
-                post_data['file']['path'] = post_data['file']['path'].replace('https://kemono.party' + old_string, new_string)
-                post_data['file']['path'] = post_data['file']['path'].replace(old_string, new_string)
+                post_data['file']['path'] = post_data['file']['path'].replace('https://kemono.party' + old_file, new_file)
+                post_data['file']['path'] = post_data['file']['path'].replace(old_file, new_file)
             for (i, _) in enumerate(post_data['attachments']):
                 if post_data['attachments'][i].get('path'):
-                    post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_string, new_string)
-                    post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_string, new_string)
+                    post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file, new_file)
+                    post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file, new_file)
             if (original_post_data != post_data):
                 updated_rows += 1
             else:
