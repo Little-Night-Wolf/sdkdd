@@ -23,6 +23,7 @@ def migrate_inline(
     _post_id=None,
 ):
     if not os.path.exists(path):
+        print('dne')
         return
 
     # check if the file is special (symlink, hardlink, empty) and return if so
@@ -30,8 +31,8 @@ def migrate_inline(
         print(f'badfile ({path}) -> {os.path.islink(path)}, {os.path.getsize(path) == 0}, {os.path.ismount(path)}')
         return
 
-    
     if config.ignore_temp_files and path.endswith('.temp'):
+        print('temp')
         return
     
     file_ext = os.path.splitext(path)[1]
