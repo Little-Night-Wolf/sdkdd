@@ -103,7 +103,7 @@ def apply():
                       FROM posts_dump a, migration_log b
                       WHERE b.migration_original_path = a.file_path
                     )
-            ''').fetchall()
+            ''')
             for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
                 print(f'found s:{post_service}, u:{post_user_id}, id:{post_id} -> {file_location}')
                 migrator_args = (file_location, timestamp, post_service, post_user_id, post_id)
