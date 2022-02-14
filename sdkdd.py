@@ -112,6 +112,7 @@ def apply():
                     post_user_id,
                     post_id
                 )
+                print(migrator_args[0])
                 if file_location.startswith('/files/') and config.scan_files:
                     pool.apply_async(migrate_file, args=migrator_args)
                 elif file_location.startswith('/attachments/') and config.scan_attachments:
