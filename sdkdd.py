@@ -13,7 +13,7 @@ from src.migrators.attachments import migrate_attachment
 from src.migrators.inline import migrate_inline
 
 def handle_process_error(e):
-    raise e
+    print(e)
 
 def scan_files_for_apply(pool, migration_id, dir = os.path.join(config.data_dir, 'files')):
     if not os.path.exists(os.path.join(config.data_dir, 'files')):
