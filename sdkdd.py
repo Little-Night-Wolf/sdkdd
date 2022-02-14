@@ -104,7 +104,7 @@ def apply():
                     )
             ''')
             for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
-                migrator_args = (file_location, timestamp, post_service, post_user_id, post_id)
+                migrator_args = (os.path.join(config.data_dir, file_location), timestamp, post_service, post_user_id, post_id)
                 if file_location.startswith('/files/') and config.scan_files:
                     pool.apply_async(migrate_file, args=migrator_args)
                 elif file_location.startswith('/attachments/') and config.scan_attachments:
