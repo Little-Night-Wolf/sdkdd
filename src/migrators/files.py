@@ -98,6 +98,7 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
                     user_id = post['user']
                     post_id = post['id']
 
+        print(f'yayfiles -> {updated_rows}')
         # Update "file" path references in database, using different strategies to speed the operation up.
         # strat 1: attempt to derive the user and post id from the original path
         if (len(web_path.split('/')) >= 4 and updated_rows == 0):

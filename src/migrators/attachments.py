@@ -102,7 +102,7 @@ def migrate_attachment(
                 new_file=new_filename
             )
 
-        print('yay')
+        print(f'yay -> {updated_rows}')
         # update "attachment" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to derive the user and post id from the original path
         if (len(web_path.split('/')) >= 4 and updated_rows == 0):
