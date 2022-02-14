@@ -87,7 +87,6 @@ def apply():
             if (config.scan_inline):
                 scan_inline_for_apply(pool, timestamp)
         else:
-            print('sqlmode started')
             sqlite_conn = sqlite3.connect(config.sql_file)
             posts_to_fix = sqlite_conn.execute('''
                 SELECT
@@ -105,7 +104,6 @@ def apply():
                     )
             ''')
             for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
-                print(f'found s:{post_service}, u:{post_user_id}, id:{post_id} -> {file_location}')
                 migrator_args = (file_location, timestamp, post_service, post_user_id, post_id)
                 if file_location.startswith('/files/') and config.scan_files:
                     pool.apply_async(migrate_file, args=migrator_args)

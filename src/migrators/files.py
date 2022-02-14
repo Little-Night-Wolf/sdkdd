@@ -56,8 +56,6 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
             cursor_factory=RealDictCursor
         )
 
-        print(f'{web_path} ...> {new_filename}')
-
         # log to file tracking table
         if (not config.dry_run):
             cursor = conn.cursor()
@@ -67,10 +65,8 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         updated_rows = 0
         step = 99
         if (service and user_id and post_id):
-            print('sql accelerating... (1/2)')
             with conn.cursor() as cursor:
                 cursor = conn.cursor()
-                print('sql accelerating... (2/2)')
                 cursor.execute("""
                     UPDATE posts
                     SET file = jsonb_set(file, '{path}', %s, false)
@@ -90,7 +86,6 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
                     new_filename)
                 )
                 updated_rows = cursor.rowcount
-                print(f'sql done, {updated_rows}')
                 post = cursor.fetchone()
                 if (post):
                     service = post['service']
@@ -157,8 +152,6 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
             cursor = conn.cursor()
             cursor.execute(f"INSERT INTO sdkdd_migration_{migration_id} (old_location, new_location, ctime, mtime) VALUES (%s, %s, %s, %s)", (web_path, new_filename, mtime, ctime))
             cursor.close()
-
-        print(f'cleared! {path}')
 
         # commit db
         if (config.dry_run):
