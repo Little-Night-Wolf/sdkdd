@@ -120,6 +120,8 @@ def apply():
                     pool.apply_async(migrate_attachment, args=migrator_args)
                 elif relative_file_location.startswith('/inline/') and config.scan_inline:
                     pool.apply_async(migrate_inline, args=migrator_args)
+                else:
+                    print(file_location)
 
         pool.close()
         pool.join()
