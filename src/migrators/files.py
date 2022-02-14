@@ -36,12 +36,14 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
     user_id = _user_id or None
     with open(path, 'rb') as f:
         # get hash and filename
+        print('hashing')
         file_hash_raw = hashlib.sha256()
         for chunk in iter(lambda: f.read(8192), b''):
             file_hash_raw.update(chunk)
         file_hash = file_hash_raw.hexdigest()
         new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash)
-        
+        print('hashed')
+
         mime = magic.from_file(path, mime=True)
         if (config.fix_extensions):
             file_ext = mimetypes.guess_extension(mime or 'application/octet-stream', strict=False)
@@ -53,6 +55,7 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         mtime = datetime.datetime.fromtimestamp(fname.stat().st_mtime)
         ctime = datetime.datetime.fromtimestamp(fname.stat().st_ctime)
 
+        print('preconnect')
         conn = psycopg2.connect(
             host=config.database_host,
             dbname=config.database_dbname,
@@ -61,7 +64,7 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
             port=5432,
             cursor_factory=RealDictCursor
         )
-
+        print('dbconnect')
         # log to file tracking table
         if (not config.dry_run):
             cursor = conn.cursor()

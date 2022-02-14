@@ -48,11 +48,13 @@ def migrate_attachment(
     message_id = _message_id or None
     with open(path, 'rb') as f:
         # get hash and filename
+        print('hashing')
         file_hash_raw = hashlib.sha256()
         for chunk in iter(lambda: f.read(8192), b''):
             file_hash_raw.update(chunk)
         file_hash = file_hash_raw.hexdigest()
         new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash)
+        print('hashed')
         
         mime = magic.from_file(path, mime=True)
         if (config.fix_extensions):
