@@ -7,6 +7,7 @@ import psycopg2
 import sqlite3
 from click_default_group import DefaultGroup
 
+from src.utils import remove_prefix
 from src.migrators.files import migrate_file
 from src.migrators.attachments import migrate_attachment
 from src.migrators.inline import migrate_inline
@@ -104,7 +105,13 @@ def apply():
                     )
             ''')
             for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
-                migrator_args = (os.path.join(config.data_dir, file_location), timestamp, post_service, post_user_id, post_id)
+                migrator_args = (
+                    os.path.join(config.data_dir, remove_prefix(file_location, '/')),
+                    timestamp,
+                    post_service,
+                    post_user_id,
+                    post_id
+                )
                 if file_location.startswith('/files/') and config.scan_files:
                     pool.apply_async(migrate_file, args=migrator_args)
                 elif file_location.startswith('/attachments/') and config.scan_attachments:
