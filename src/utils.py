@@ -50,18 +50,18 @@ def replace_file_from_post(
     with pg_connection.cursor() as cursor:
         if user_id and post_id:
             print('good')
-            posts = cursor.execute('SELECT * FROM posts WHERE "user" = %s AND id = %s', (user_id, post_id))
+            cursor.execute('SELECT * FROM posts WHERE "user" = %s AND id = %s', (user_id, post_id))
         if service and user_id and post_id:
             print('good')
-            posts = cursor.execute('SELECT * FROM posts WHERE service = %s AND "user" = %s AND id = %s', (service, user_id, post_id))
+            cursor.execute('SELECT * FROM posts WHERE service = %s AND "user" = %s AND id = %s', (service, user_id, post_id))
         elif min_time and max_time:
             print('bad')
-            posts = cursor.execute('SELECT * FROM posts WHERE added >= %s AND added < %s', (min_time, max_time))
+            cursor.execute('SELECT * FROM posts WHERE added >= %s AND added < %s', (min_time, max_time))
         else:
             print('extremely homosexual')
-            posts = cursor.execute('SELECT * FROM posts')
+            cursor.execute('SELECT * FROM posts')
 
-        for post_data in posts:
+        for post_data in cursor:
             original_post_data = post_data
 
             # Replace.
