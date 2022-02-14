@@ -19,6 +19,9 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
     # check if the file is special (symlink, hardlink, empty) and return if so
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path):
         return
+
+    if not os.path.exists(path):
+        return
     
     if config.ignore_temp_files and path.endswith('.temp'):
         return
