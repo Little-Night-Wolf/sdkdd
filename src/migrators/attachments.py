@@ -25,12 +25,13 @@ def migrate_attachment(
     _channel_id=None,
     _message_id=None
 ):
+    if not os.path.exists(path):
+        return
+
     # check if the file is special (symlink, hardlink, empty) and return if so
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path) or path.endswith('.temp'):
         return
 
-    if not os.path.exists(path):
-        return
     
     if config.ignore_temp_files and path.endswith('.temp'):
         return
