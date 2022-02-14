@@ -115,13 +115,16 @@ def apply():
                 )
                 
                 if relative_file_location.startswith('/files/') and config.scan_files:
+                    print('files:' + file_location)
                     pool.apply_async(migrate_file, args=migrator_args)
                 elif relative_file_location.startswith('/attachments/') and config.scan_attachments:
+                    print('attachments:' + file_location)
                     pool.apply_async(migrate_attachment, args=migrator_args)
                 elif relative_file_location.startswith('/inline/') and config.scan_inline:
+                    print('inline:' + file_location)
                     pool.apply_async(migrate_inline, args=migrator_args)
                 else:
-                    print(file_location)
+                    print('nothing:' + file_location)
 
         pool.close()
         pool.join()
