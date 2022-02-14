@@ -61,7 +61,9 @@ def replace_file_from_post(
             print('extremely homosexual')
             cursor.execute('SELECT * FROM posts')
 
+        first_post = None
         for post_data in cursor:
+            first_post = first_post or post_data
             original_post_data = post_data
 
             # Replace.
@@ -95,7 +97,7 @@ def replace_file_from_post(
             )
             cursor.execute(query, list(post_data.values()) + list((service, user_id, post_id,)))
 
-        return (updated_rows, posts[0] if len(posts) else None)
+        return (updated_rows, first_post)
 
 
 def replace_file_from_discord_message(
