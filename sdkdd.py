@@ -105,24 +105,29 @@ def apply():
                     )
             ''')
             for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
-                relative_file_location = file_location
-                migrator_args = (
-                    os.path.join(config.data_dir, remove_prefix(file_location, '/')),
-                    timestamp,
-                    post_service,
-                    post_user_id,
-                    post_id
-                )
+                absolute_file_location = os.path.join(config.data_dir, remove_prefix(file_location, '/'))
                 
-                if relative_file_location.startswith('/files/') and config.scan_files:
+                if file_location.startswith('/files/') and config.scan_files:
                     print('files:' + file_location)
-                    pool.apply_async(migrate_file, args=migrator_args)
-                elif relative_file_location.startswith('/attachments/') and config.scan_attachments:
+                    pool.apply_async(migrate_file, args=(absolute_file_location, timestamp), kwds={
+                        '_service': post_service,
+                        '_user_id': post_user_id,
+                        '_post_id': post_id
+                    })
+                elif file_location.startswith('/attachments/') and config.scan_attachments:
                     print('attachments:' + file_location)
-                    pool.apply_async(migrate_attachment, args=migrator_args)
-                elif relative_file_location.startswith('/inline/') and config.scan_inline:
+                    pool.apply_async(migrate_attachment, args=(absolute_file_location, timestamp), kwds={
+                        '_service': post_service,
+                        '_user_id': post_user_id,
+                        '_post_id': post_id
+                    })
+                elif file_location.startswith('/inline/') and config.scan_inline:
                     print('inline:' + file_location)
-                    pool.apply_async(migrate_inline, args=migrator_args)
+                    pool.apply_async(migrate_inline, args=(absolute_file_location, timestamp), kwds={
+                        '_service': post_service,
+                        '_user_id': post_user_id,
+                        '_post_id': post_id
+                    })
                 else:
                     print('nothing:' + file_location)
 
