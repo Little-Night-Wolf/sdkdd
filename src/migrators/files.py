@@ -68,6 +68,7 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
             cursor.execute("INSERT INTO files (hash, mtime, ctime, mime, ext) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (hash) DO UPDATE SET hash = EXCLUDED.hash RETURNING id", (file_hash, mtime, ctime, mime, file_ext))
             file_id = cursor.fetchone()['id']
         
+        print('updating')
         updated_rows = 0
         step = 99
         if (service and user_id and post_id):
@@ -103,6 +104,7 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         # strat 1: attempt to derive the user and post id from the original path
         if (len(web_path.split('/')) >= 4 and updated_rows == 0):
             step = 1
+            print(f"step {step}")
             guessed_post_id = web_path.split('/')[-2]
             guessed_user_id = web_path.split('/')[-3]
 
@@ -122,6 +124,7 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
             step = 2
+            print(f"step {step}")
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE added >= %s AND added < %s AND (file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
@@ -138,6 +141,7 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         # optimizations didn't work, scan the entire table
         if updated_rows == 0:
             step = 3
+            print(f"step {step}")
             cursor = conn.cursor()
             cursor.execute("UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";", (f'"{new_filename}"', web_path, 'https://kemono.party' + web_path, new_filename))
             updated_rows = cursor.rowcount
