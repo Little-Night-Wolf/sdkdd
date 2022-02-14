@@ -17,14 +17,16 @@ from retry import retry
 @retry(tries=5)
 def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id=None):
     if not os.path.exists(path):
+        print('dne')
         return
 
     # check if the file is special (symlink, hardlink, empty) and return if so
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path):
+        print('badfile')
         return
 
-    
     if config.ignore_temp_files and path.endswith('.temp'):
+        print('temp')
         return
     
     file_ext = os.path.splitext(path)[1]
