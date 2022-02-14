@@ -12,6 +12,9 @@ from src.migrators.files import migrate_file
 from src.migrators.attachments import migrate_attachment
 from src.migrators.inline import migrate_inline
 
+def handle_process_error(e):
+    raise e
+
 def scan_files_for_apply(pool, migration_id, dir = os.path.join(config.data_dir, 'files')):
     if not os.path.exists(os.path.join(config.data_dir, 'files')):
         print('"files" directory is missing, and will be skipped.')
@@ -113,21 +116,21 @@ def apply():
                         '_service': post_service,
                         '_user_id': post_user_id,
                         '_post_id': post_id
-                    })
+                    }, error_callback=handle_process_error)
                 elif file_location.startswith('/attachments/') and config.scan_attachments:
                     print('attachments:' + file_location)
                     pool.apply_async(migrate_attachment, args=(absolute_file_location, timestamp), kwds={
                         '_service': post_service,
                         '_user_id': post_user_id,
                         '_post_id': post_id
-                    })
+                    }, error_callback=handle_process_error)
                 elif file_location.startswith('/inline/') and config.scan_inline:
                     print('inline:' + file_location)
                     pool.apply_async(migrate_inline, args=(absolute_file_location, timestamp), kwds={
                         '_service': post_service,
                         '_user_id': post_user_id,
                         '_post_id': post_id
-                    })
+                    }, error_callback=handle_process_error)
                 else:
                     print('nothing:' + file_location)
 
