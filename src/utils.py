@@ -49,16 +49,12 @@ def replace_file_from_post(
     updated_rows = 0
     with pg_connection.cursor() as cursor:
         if user_id and post_id:
-            print('good')
             cursor.execute('SELECT * FROM posts WHERE "user" = %s AND id = %s', (user_id, post_id))
         if service and user_id and post_id:
-            print('good')
             cursor.execute('SELECT * FROM posts WHERE service = %s AND "user" = %s AND id = %s', (service, user_id, post_id))
         elif min_time and max_time:
-            print('bad')
             cursor.execute('SELECT * FROM posts WHERE added >= %s AND added < %s', (min_time, max_time))
         else:
-            print('extremely homosexual')
             cursor.execute('SELECT * FROM posts')
 
         first_post = None

@@ -17,18 +17,15 @@ from retry import retry
 @retry(tries=5)
 def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id=None):
     if not os.path.exists(path):
-        print('dne')
         return
 
     # check if the file is special (symlink, hardlink, empty) and return if so
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path):
-        print(f'badfile ({path}) -> {os.path.islink(path)}, {os.path.getsize(path) == 0}, {os.path.ismount(path)}')
         return
 
     if config.ignore_temp_files and path.endswith('.temp'):
-        print('temp')
         return
-    
+
     file_ext = os.path.splitext(path)[1]
     web_path = path.replace(remove_suffix(config.data_dir, '/'), '')
     service = _service or None
@@ -36,13 +33,11 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
     user_id = _user_id or None
     with open(path, 'rb') as f:
         # get hash and filename
-        print('hashing')
         file_hash_raw = hashlib.sha256()
         for chunk in iter(lambda: f.read(8192), b''):
             file_hash_raw.update(chunk)
         file_hash = file_hash_raw.hexdigest()
         new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash)
-        print('hashed')
 
         mime = magic.from_file(path, mime=True)
         if (config.fix_extensions):
@@ -55,7 +50,6 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         mtime = datetime.datetime.fromtimestamp(fname.stat().st_mtime)
         ctime = datetime.datetime.fromtimestamp(fname.stat().st_ctime)
 
-        print('preconnect')
         conn = psycopg2.connect(
             host=config.database_host,
             dbname=config.database_dbname,
@@ -64,14 +58,13 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
             port=5432,
             cursor_factory=RealDictCursor
         )
-        print('dbconnect')
+
         # log to file tracking table
         if (not config.dry_run):
             cursor = conn.cursor()
             cursor.execute("INSERT INTO files (hash, mtime, ctime, mime, ext) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (hash) DO UPDATE SET hash = EXCLUDED.hash RETURNING id", (file_hash, mtime, ctime, mime, file_ext))
             file_id = cursor.fetchone()['id']
         
-        print('updating')
         updated_rows = 0
         step = 99
         if (service and user_id and post_id):
@@ -102,12 +95,10 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
                     user_id = post['user']
                     post_id = post['id']
 
-        print(f'yayfiles -> {updated_rows}')
         # Update "file" path references in database, using different strategies to speed the operation up.
         # strat 1: attempt to derive the user and post id from the original path
         if (len(web_path.split('/')) >= 4 and updated_rows == 0):
             step = 1
-            print(f"step {step}")
             guessed_post_id = web_path.split('/')[-2]
             guessed_user_id = web_path.split('/')[-3]
 
@@ -127,7 +118,6 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
             step = 2
-            print(f"step {step}")
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE added >= %s AND added < %s AND (file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s) RETURNING posts.id, posts.service, posts.\"user\";",
@@ -144,7 +134,6 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
         # optimizations didn't work, scan the entire table
         if updated_rows == 0:
             step = 3
-            print(f"step {step}")
             cursor = conn.cursor()
             cursor.execute("UPDATE posts SET file = jsonb_set(file, '{path}', %s, false) WHERE file ->> 'path' = %s OR file ->> 'path' = %s OR file ->> 'path' = %s RETURNING posts.id, posts.service, posts.\"user\";", (f'"{new_filename}"', web_path, 'https://kemono.party' + web_path, new_filename))
             updated_rows = cursor.rowcount

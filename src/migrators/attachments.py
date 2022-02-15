@@ -26,16 +26,13 @@ def migrate_attachment(
     _message_id=None
 ):
     if not os.path.exists(path):
-        print('dne')
         return
 
     # check if the file is special (symlink, hardlink, empty) and return if so
     if os.path.islink(path) or os.path.getsize(path) == 0 or os.path.ismount(path):
-        print(f'badfile ({path}) -> {os.path.islink(path)}, {os.path.getsize(path) == 0}, {os.path.ismount(path)}')
         return
 
     if config.ignore_temp_files and path.endswith('.temp'):
-        print('temp')
         return
     
     file_ext = os.path.splitext(path)[1]
@@ -48,13 +45,11 @@ def migrate_attachment(
     message_id = _message_id or None
     with open(path, 'rb') as f:
         # get hash and filename
-        print('hashing')
         file_hash_raw = hashlib.sha256()
         for chunk in iter(lambda: f.read(8192), b''):
             file_hash_raw.update(chunk)
         file_hash = file_hash_raw.hexdigest()
         new_filename = os.path.join('/', file_hash[0:2], file_hash[2:4], file_hash)
-        print('hashed')
         
         mime = magic.from_file(path, mime=True)
         if (config.fix_extensions):
@@ -66,8 +61,6 @@ def migrate_attachment(
         fname = pathlib.Path(path)
         mtime = datetime.datetime.fromtimestamp(fname.stat().st_mtime)
         ctime = datetime.datetime.fromtimestamp(fname.stat().st_ctime)
-
-        print('pre-connect')
 
         conn = psycopg2.connect(
             host=config.database_host,
@@ -84,7 +77,6 @@ def migrate_attachment(
             cursor.execute("INSERT INTO files (hash, mtime, ctime, mime, ext) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (hash) DO UPDATE SET hash = EXCLUDED.hash RETURNING id", (file_hash, mtime, ctime, mime, file_ext))
             file_id = cursor.fetchone()['id']
         
-        print('updating')
         updated_rows = 0
         step = 99
         if (service and user_id and post_id):
@@ -107,12 +99,10 @@ def migrate_attachment(
                 new_file=new_filename
             )
 
-        print(f'yay -> {updated_rows}')
         # update "attachment" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to derive the user and post id from the original path
         if (len(web_path.split('/')) >= 4 and updated_rows == 0):
             step = 1
-            print(f"step {step}")
             guessed_post_id = web_path.split('/')[-2]
             guessed_user_id = web_path.split('/')[-3]
             (updated_rows, post) = replace_file_from_post(
@@ -130,7 +120,6 @@ def migrate_attachment(
         # Discord
         if (updated_rows == 0 and len(web_path.split('/')) >= 4):
             step = 2
-            print(f"step {step}")
             (updated_rows, message) = replace_file_from_discord_message(
                 conn,
                 message_id=web_path.split('/')[-2],
@@ -146,7 +135,6 @@ def migrate_attachment(
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
             step = 3
-            print(f"step {step}")
             (updated_rows, post) = replace_file_from_post(
                 conn,
                 min_time=mtime,
@@ -162,7 +150,6 @@ def migrate_attachment(
         # optimizations didn't work, scan the entire table
         if updated_rows == 0:
             step = 4
-            print(f"step {step}")
             (updated_rows, post) = replace_file_from_post(
                 conn,
                 old_file=web_path,
@@ -175,7 +162,6 @@ def migrate_attachment(
         
         if (updated_rows == 0):
             step = 5
-            print(f"step {step}")
             (updated_rows, message) = replace_file_from_discord_message(
                 conn,
                 old_file=web_path,
