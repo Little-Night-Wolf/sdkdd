@@ -183,6 +183,6 @@ def migrate_file(path: str, migration_id, _service=None, _user_id=None, _post_id
 
         # done!
         if (service and user_id and post_id):
-            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; {service}/{user_id}/{post_id}, found at step {step})')
+            print(f'{web_path}\t{new_filename}\t({updated_rows} database entries updated; {service}/{user_id}/{post_id}, found at step {step})')
         else:
-            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; no post/messages found)')
+            print(f'{web_path}\t{new_filename}\t({updated_rows} database entries updated; no post/messages found)')

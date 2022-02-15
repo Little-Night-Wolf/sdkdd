@@ -214,8 +214,8 @@ def migrate_attachment(
 
         # done!
         if (service and user_id and post_id):
-            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; {service}/{user_id}/{post_id}, found at step {step})')
+            print(f'{web_path}\t{new_filename}\t({updated_rows} database entries updated; {service}/{user_id}/{post_id}, found at step {step})')
         elif (server_id and channel_id and message_id):
-            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; discord/{server_id}/{channel_id}/{message_id}, found at step {step})')
+            print(f'{web_path}\t{new_filename}\t({updated_rows} database entries updated; discord/{server_id}/{channel_id}/{message_id}, found at step {step})')
         else:
-            print(f'{web_path} -> {new_filename} ({updated_rows} database entries updated; no post/messages found)')
+            print(f'{web_path}\t{new_filename}\t({updated_rows} database entries updated; no post/messages found)')
