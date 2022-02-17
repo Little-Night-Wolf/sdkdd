@@ -116,32 +116,33 @@ def replace_file_from_discord_message(
     """
     updated_rows = 0
     with pg_connection.cursor() as cursor:
-        if server_id and message_id:
-            cursor.execute('SELECT * FROM discord_posts WHERE server = %s AND id = %s', (server_id, channel_id, message_id))
         if server_id and channel_id and message_id:
             cursor.execute('SELECT * FROM discord_posts WHERE server = %s AND channel = %s AND id = %s', (server_id, channel_id, message_id))
+        if server_id and message_id:
+            cursor.execute('SELECT * FROM discord_posts WHERE server = %s AND id = %s', (server_id, channel_id, message_id))
         elif min_time and max_time:
             cursor.execute('SELECT * FROM discord_posts WHERE added >= %s AND added < %s', (min_time, max_time))
         else:
             cursor.execute('SELECT * FROM discord_posts')
         messages = cursor.fetchall()
 
+        first_message = None
         for post_data in messages:
-            original_post_data = post_data
+            first_message = first_message or post_data
+            original_message_data = post_data
 
             # Replace.
             for (i, _) in enumerate(post_data['attachments']):
                 if post_data['attachments'][i].get('path'):
                     post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file, new_file)
                     post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file, new_file)
-            if (original_post_data != post_data):
+            if (original_message_data != post_data):
                 updated_rows += 1
             else:
                 continue
 
             # Format.
             post_data['embed'] = json.dumps(post_data['embed'])
-            post_data['file'] = json.dumps(post_data['file'])
             for i in range(len(post_data['attachments'])):
                 post_data['attachments'][i] = json.dumps(post_data['attachments'][i])
 
@@ -155,4 +156,4 @@ def replace_file_from_discord_message(
             )
             cursor.execute(query, list(post_data.values()) + list((server_id, channel_id, message_id,)))
 
-        return (updated_rows, messages[0] if len(messages) else None)
+        return (updated_rows, first_message)
