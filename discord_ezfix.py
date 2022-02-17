@@ -61,4 +61,6 @@ for (message_service, message_channel_id, message_id, old_file_location, new_fil
         })
 
     psql_conn.commit()
-    psql_conn.close()
+    print(f'{message_service}/{message_channel_id}/{message_id} fixed ({old_file_location} > {new_file_location})')
+
+psql_conn.close()
