@@ -80,7 +80,7 @@ def migrate_attachment(
         updated_rows = 0
         step = 99
         if (service and user_id and post_id):
-            (updated_rows, _) = replace_file_from_post(
+            (_updated_rows, _) = replace_file_from_post(
                 conn,
                 service=service,
                 user_id=user_id,
@@ -88,9 +88,10 @@ def migrate_attachment(
                 old_file=web_path,
                 new_file=new_filename
             )
+            updated_rows = _updated_rows
 
         if (server_id and channel_id and message_id):
-            (updated_rows, _) = replace_file_from_discord_message(
+            (_updated_rows, _) = replace_file_from_discord_message(
                 conn,
                 server_id=server_id,
                 channel_id=channel_id,
@@ -98,6 +99,7 @@ def migrate_attachment(
                 old_file=web_path,
                 new_file=new_filename
             )
+            updated_rows = _updated_rows
 
         # update "attachment" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to derive the user and post id from the original path
@@ -105,13 +107,14 @@ def migrate_attachment(
             step = 1
             guessed_post_id = web_path.split('/')[-2]
             guessed_user_id = web_path.split('/')[-3]
-            (updated_rows, post) = replace_file_from_post(
+            (_updated_rows, post) = replace_file_from_post(
                 conn,
                 user_id=guessed_user_id,
                 post_id=guessed_post_id,
                 old_file=web_path,
                 new_file=new_filename
             )
+            updated_rows = _updated_rows
             if (post):
                 service = post['service']
                 user_id = post['user']
@@ -120,13 +123,14 @@ def migrate_attachment(
         # Discord
         if (updated_rows == 0 and len(web_path.split('/')) >= 4):
             step = 2
-            (updated_rows, message) = replace_file_from_discord_message(
+            (_updated_rows, message) = replace_file_from_discord_message(
                 conn,
                 message_id=web_path.split('/')[-2],
                 server_id=web_path.split('/')[-3],
                 old_file=web_path,
                 new_file=new_filename
             )
+            updated_rows = _updated_rows
             if (message):
                 server_id = message['server']
                 channel_id = message['channel']
@@ -135,13 +139,14 @@ def migrate_attachment(
         # strat 2: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
             step = 3
-            (updated_rows, post) = replace_file_from_post(
+            (_updated_rows, post) = replace_file_from_post(
                 conn,
                 min_time=mtime,
                 max_time=mtime + datetime.timedelta(hours=1),
                 old_file=web_path,
                 new_file=new_filename
             )
+            updated_rows = _updated_rows
             if (post):
                 service = post['service']
                 user_id = post['user']
@@ -150,11 +155,12 @@ def migrate_attachment(
         # optimizations didn't work, scan the entire table
         if updated_rows == 0:
             step = 4
-            (updated_rows, post) = replace_file_from_post(
+            (_updated_rows, post) = replace_file_from_post(
                 conn,
                 old_file=web_path,
                 new_file=new_filename
             )
+            updated_rows = _updated_rows
             if (post):
                 service = post['service']
                 user_id = post['user']
@@ -162,11 +168,12 @@ def migrate_attachment(
         
         if (updated_rows == 0):
             step = 5
-            (updated_rows, message) = replace_file_from_discord_message(
+            (_updated_rows, message) = replace_file_from_discord_message(
                 conn,
                 old_file=web_path,
                 new_file=new_filename
             )
+            updated_rows = _updated_rows
             if (message):
                 server_id = message['server']
                 channel_id = message['channel']

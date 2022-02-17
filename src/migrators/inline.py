@@ -74,7 +74,7 @@ def migrate_inline(
         updated_rows = 0
         step = 99
         if (service and user_id and post_id):
-            (updated_rows, _) = replace_file_from_post(
+            (_updated_rows, _) = replace_file_from_post(
                 conn,
                 service=service,
                 user_id=user_id,
@@ -82,17 +82,19 @@ def migrate_inline(
                 old_file=web_path,
                 new_file=new_filename
             )
+            updated_rows = _updated_rows
         # update "inline" path references in db, using different strategies to speed the operation up
         # strat 1: attempt to scope out posts archived up to 1 hour after the file was modified (kemono data should almost never change)
         if updated_rows == 0:
             step = 1
-            (updated_rows, post) = replace_file_from_post(
+            (_updated_rows, post) = replace_file_from_post(
                 conn,
                 min_time=mtime,
                 max_time=mtime + datetime.timedelta(hours=1),
                 old_file=web_path,
                 new_file=new_filename
             )
+            updated_rows = _updated_rows
             if (post):
                 service = post['service']
                 user_id = post['user']
@@ -103,11 +105,12 @@ def migrate_inline(
         # ... this will take a very long time.
         if updated_rows == 0:
             step = 2
-            (updated_rows, post) = replace_file_from_post(
+            (_updated_rows, post) = replace_file_from_post(
                 conn,
                 old_file=web_path,
                 new_file=new_filename
             )
+            updated_rows = _updated_rows
             if (post):
                 service = post['service']
                 user_id = post['user']
