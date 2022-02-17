@@ -119,7 +119,7 @@ def replace_file_from_discord_message(
         if server_id and channel_id and message_id:
             cursor.execute('SELECT * FROM discord_posts WHERE server = %s AND channel = %s AND id = %s', (server_id, channel_id, message_id))
         if server_id and message_id:
-            cursor.execute('SELECT * FROM discord_posts WHERE server = %s AND id = %s', (server_id, channel_id, message_id))
+            cursor.execute('SELECT * FROM discord_posts WHERE server = %s AND id = %s', (server_id, message_id))
         elif min_time and max_time:
             cursor.execute('SELECT * FROM discord_posts WHERE added >= %s AND added < %s', (min_time, max_time))
         else:
