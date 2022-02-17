@@ -113,43 +113,43 @@ def apply():
                             '_channel_id': message_channel,
                             '_message_id': message_id
                         })
-
-            posts_to_fix = sqlite_conn.execute('''
-                SELECT
-                    posts_dump.service,
-                    posts_dump.user_id,
-                    posts_dump.post_id,
-                    posts_dump.file_path
-                FROM posts_dump, hashdeep_to_migrate
-                WHERE
-                    posts_dump.file_path = hashdeep_to_migrate.path
-                    AND posts_dump.file_path not in (
-                      SELECT a.file_path
-                      FROM posts_dump a, migration_log b
-                      WHERE b.migration_original_path = a.file_path
-                    )
-            ''')
-            for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
-                absolute_file_location = os.path.join(config.data_dir, remove_prefix(file_location, '/'))
-                
-                if file_location.startswith('/files/') and config.scan_files:
-                    pool.apply_async(migrate_file, args=(absolute_file_location, timestamp), kwds={
-                        '_service': post_service,
-                        '_user_id': post_user_id,
-                        '_post_id': post_id
-                    })
-                elif file_location.startswith('/attachments/') and config.scan_attachments:
-                    pool.apply_async(migrate_attachment, args=(absolute_file_location, timestamp), kwds={
-                        '_service': post_service,
-                        '_user_id': post_user_id,
-                        '_post_id': post_id
-                    })
-                elif file_location.startswith('/inline/') and config.scan_inline:
-                    pool.apply_async(migrate_inline, args=(absolute_file_location, timestamp), kwds={
-                        '_service': post_service,
-                        '_user_id': post_user_id,
-                        '_post_id': post_id
-                    })
+            else:
+                posts_to_fix = sqlite_conn.execute('''
+                    SELECT
+                        posts_dump.service,
+                        posts_dump.user_id,
+                        posts_dump.post_id,
+                        posts_dump.file_path
+                    FROM posts_dump, hashdeep_to_migrate
+                    WHERE
+                        posts_dump.file_path = hashdeep_to_migrate.path
+                        AND posts_dump.file_path not in (
+                          SELECT a.file_path
+                          FROM posts_dump a, migration_log b
+                          WHERE b.migration_original_path = a.file_path
+                        )
+                ''')
+                for (post_service, post_user_id, post_id, file_location) in posts_to_fix:
+                    absolute_file_location = os.path.join(config.data_dir, remove_prefix(file_location, '/'))
+                    
+                    if file_location.startswith('/files/') and config.scan_files:
+                        pool.apply_async(migrate_file, args=(absolute_file_location, timestamp), kwds={
+                            '_service': post_service,
+                            '_user_id': post_user_id,
+                            '_post_id': post_id
+                        })
+                    elif file_location.startswith('/attachments/') and config.scan_attachments:
+                        pool.apply_async(migrate_attachment, args=(absolute_file_location, timestamp), kwds={
+                            '_service': post_service,
+                            '_user_id': post_user_id,
+                            '_post_id': post_id
+                        })
+                    elif file_location.startswith('/inline/') and config.scan_inline:
+                        pool.apply_async(migrate_inline, args=(absolute_file_location, timestamp), kwds={
+                            '_service': post_service,
+                            '_user_id': post_user_id,
+                            '_post_id': post_id
+                        })
 
         pool.close()
         pool.join()
