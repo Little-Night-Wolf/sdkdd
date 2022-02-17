@@ -88,7 +88,32 @@ def apply():
             if (config.scan_inline):
                 scan_inline_for_apply(pool, timestamp)
         else:
-            sqlite_conn = sqlite3.connect(config.sql_file)
+            if config.discord_sql:
+                sqlite_conn = sqlite3.connect(config.sql_file)
+                messages_to_fix = sqlite_conn.execute('''
+                    SELECT
+                        discord_posts_dump.discord_server_id,
+                        discord_posts_dump.discord_channel_id,
+                        discord_posts_dump.discord_message_id,
+                        discord_posts_dump.file_path
+                    FROM discord_posts_dump, hashdeep_to_migrate
+                    WHERE
+                        discord_posts_dump.file_path = hashdeep_to_migrate.path
+                        AND discord_posts_dump.file_path not in (
+                          SELECT a.file_path
+                          FROM discord_posts_dump a, migration_log b
+                          WHERE b.migration_original_path = a.file_path
+                        )
+                ''')
+                for (message_server, message_channel, message_id, file_location) in messages_to_fix:
+                    absolute_file_location = os.path.join(config.data_dir, remove_prefix(file_location, '/'))
+                    if file_location.startswith('/attachments/') and config.scan_attachments:
+                        pool.apply_async(migrate_attachment, args=(absolute_file_location, timestamp), kwds={
+                            '_server_id': message_server,
+                            '_channel_id': message_channel,
+                            '_message_id': message_id
+                        })
+
             posts_to_fix = sqlite_conn.execute('''
                 SELECT
                     posts_dump.service,
