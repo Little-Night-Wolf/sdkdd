@@ -139,7 +139,8 @@ def replace_file_from_discord_message(
                 continue
 
             # Format.
-            post_data['embed'] = json.dumps(post_data['embed'])
+            for i in range(len(post_data['embeds'])):
+                post_data['embeds'][i] = json.dumps(post_data['embeds'][i])
             for i in range(len(post_data['attachments'])):
                 post_data['attachments'][i] = json.dumps(post_data['attachments'][i])
 
