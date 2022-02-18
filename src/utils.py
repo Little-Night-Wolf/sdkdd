@@ -59,7 +59,6 @@ def replace_file_from_post(
 
         first_post = None
         for post_data in cursor:
-            first_post = first_post or post_data
             original_post_data = post_data
 
             # Replace.
@@ -72,8 +71,9 @@ def replace_file_from_post(
                 if post_data['attachments'][i].get('path'):
                     post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file, new_file)
                     post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file, new_file)
-            if (original_post_data != post_data):
+            if (original_post_data != post_data or new_file in json.dumps(post_data, default=str)):
                 updated_rows += 1
+                first_post = first_post or post_data
             else:
                 continue
 
@@ -125,7 +125,6 @@ def replace_file_from_discord_message(
 
         first_message = None
         for post_data in cursor:
-            first_message = first_message or post_data
             original_message_data = post_data
 
             # Replace.
@@ -133,8 +132,9 @@ def replace_file_from_discord_message(
                 if post_data['attachments'][i].get('path'):
                     post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file, new_file)
                     post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file, new_file)
-            if (original_message_data != post_data):
+            if (original_message_data != post_data or new_file in json.dumps(post_data, default=str)):
                 updated_rows += 1
+                first_message = first_message or post_data
             else:
                 continue
 
