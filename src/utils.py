@@ -91,7 +91,8 @@ def replace_file_from_post(
                 updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
                 conditions='service = %s AND "user" = %s AND id = %s'
             )
-            cursor.execute(query, list(post_data.values()) + list((service, user_id, post_id,)))
+            with pg_connection.cursor() as cursor:
+                cursor.execute(query, list(post_data.values()) + list((service, user_id, post_id,)))
 
         return (updated_rows, first_post)
 
@@ -157,6 +158,7 @@ def replace_file_from_discord_message(
                 updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
                 conditions='server = %s AND channel = %s AND id = %s'
             )
-            cursor.execute(query, list(post_data.values()) + list((server_id, channel_id, message_id,)))
+            with pg_connection.cursor() as cursor:
+                cursor.execute(query, list(post_data.values()) + list((server_id, channel_id, message_id,)))
 
         return (updated_rows, first_message)
