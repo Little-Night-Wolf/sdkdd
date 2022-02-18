@@ -155,7 +155,7 @@ def replace_file_from_discord_message(
             data[list(columns).index('embeds')] = '%s::jsonb[]'
             query = 'UPDATE discord_posts SET {updates} WHERE {conditions}'.format(
                 updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
-                conditions='service = %s AND "user" = %s AND id = %s'
+                conditions='server = %s AND channel = %s AND id = %s'
             )
             cursor.execute(query, list(post_data.values()) + list((server_id, channel_id, message_id,)))
 
