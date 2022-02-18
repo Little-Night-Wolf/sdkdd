@@ -58,40 +58,41 @@ def replace_file_from_post(
             cursor.execute('SELECT * FROM posts')
 
         first_post = None
-        for post_data in cursor:
-            original_post_data = post_data
+        if cursor.rowcount != 0:
+            for post_data in cursor:
+                original_post_data = post_data
 
-            # Replace.
-            post_data['content'] = post_data['content'].replace('https://kemono.party' + old_file, new_file)
-            post_data['content'] = post_data['content'].replace(old_file, new_file)
-            if post_data['file'].get('path'):
-                post_data['file']['path'] = post_data['file']['path'].replace('https://kemono.party' + old_file, new_file)
-                post_data['file']['path'] = post_data['file']['path'].replace(old_file, new_file)
-            for (i, _) in enumerate(post_data['attachments']):
-                if post_data['attachments'][i].get('path'):
-                    post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file, new_file)
-                    post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file, new_file)
-            if (original_post_data != post_data or new_file in json.dumps(post_data, default=str)):
-                updated_rows += 1
-                first_post = first_post or post_data
-            else:
-                continue
+                # Replace.
+                post_data['content'] = post_data['content'].replace('https://kemono.party' + old_file, new_file)
+                post_data['content'] = post_data['content'].replace(old_file, new_file)
+                if post_data['file'].get('path'):
+                    post_data['file']['path'] = post_data['file']['path'].replace('https://kemono.party' + old_file, new_file)
+                    post_data['file']['path'] = post_data['file']['path'].replace(old_file, new_file)
+                for (i, _) in enumerate(post_data['attachments']):
+                    if post_data['attachments'][i].get('path'):
+                        post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file, new_file)
+                        post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file, new_file)
+                if (original_post_data != post_data or new_file in json.dumps(post_data, default=str)):
+                    updated_rows += 1
+                    first_post = first_post or post_data
+                else:
+                    continue
 
-            # Format.
-            post_data['embed'] = json.dumps(post_data['embed'])
-            post_data['file'] = json.dumps(post_data['file'])
-            for i in range(len(post_data['attachments'])):
-                post_data['attachments'][i] = json.dumps(post_data['attachments'][i])
+                # Format.
+                post_data['embed'] = json.dumps(post_data['embed'])
+                post_data['file'] = json.dumps(post_data['file'])
+                for i in range(len(post_data['attachments'])):
+                    post_data['attachments'][i] = json.dumps(post_data['attachments'][i])
 
-            # Update.
-            columns = post_data.keys()
-            data = ['%s'] * len(post_data.values())
-            data[list(columns).index('attachments')] = '%s::jsonb[]'  # attachments
-            query = 'UPDATE posts SET {updates} WHERE {conditions}'.format(
-                updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
-                conditions='service = %s AND "user" = %s AND id = %s'
-            )
-            cursor.execute(query, list(post_data.values()) + list((service, user_id, post_id,)))
+                # Update.
+                columns = post_data.keys()
+                data = ['%s'] * len(post_data.values())
+                data[list(columns).index('attachments')] = '%s::jsonb[]'  # attachments
+                query = 'UPDATE posts SET {updates} WHERE {conditions}'.format(
+                    updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
+                    conditions='service = %s AND "user" = %s AND id = %s'
+                )
+                cursor.execute(query, list(post_data.values()) + list((service, user_id, post_id,)))
 
         return (updated_rows, first_post)
 
@@ -124,39 +125,40 @@ def replace_file_from_discord_message(
             cursor.execute('SELECT * FROM discord_posts')
 
         first_message = None
-        for post_data in cursor:
-            original_message_data = post_data
+        if cursor.rowcount != 0:
+            for post_data in cursor:
+                original_message_data = post_data
 
-            # Replace.
-            for (i, _) in enumerate(post_data['attachments']):
-                if post_data['attachments'][i].get('path'):
-                    post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file, new_file)
-                    post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file, new_file)
-            if (original_message_data != post_data or new_file in json.dumps(post_data, default=str)):
-                updated_rows += 1
-                first_message = first_message or post_data
-            else:
-                continue
+                # Replace.
+                for (i, _) in enumerate(post_data['attachments']):
+                    if post_data['attachments'][i].get('path'):
+                        post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace('https://kemono.party' + old_file, new_file)
+                        post_data['attachments'][i]['path'] = post_data['attachments'][i]['path'].replace(old_file, new_file)
+                if (original_message_data != post_data or new_file in json.dumps(post_data, default=str)):
+                    updated_rows += 1
+                    first_message = first_message or post_data
+                else:
+                    continue
 
-            # Format.
-            post_data['author'] = json.dumps(post_data['author'])
-            for i in range(len(post_data['attachments'])):
-                post_data['attachments'][i] = json.dumps(post_data['attachments'][i])
-            for i in range(len(post_data['mentions'])):
-                post_data['mentions'][i] = json.dumps(post_data['mentions'][i])
-            for i in range(len(post_data['embeds'])):
-                post_data['embeds'][i] = json.dumps(post_data['embeds'][i])
+                # Format.
+                post_data['author'] = json.dumps(post_data['author'])
+                for i in range(len(post_data['attachments'])):
+                    post_data['attachments'][i] = json.dumps(post_data['attachments'][i])
+                for i in range(len(post_data['mentions'])):
+                    post_data['mentions'][i] = json.dumps(post_data['mentions'][i])
+                for i in range(len(post_data['embeds'])):
+                    post_data['embeds'][i] = json.dumps(post_data['embeds'][i])
 
-            # Update.
-            columns = post_data.keys()
-            data = ['%s'] * len(post_data.values())
-            data[list(columns).index('attachments')] = '%s::jsonb[]'
-            data[list(columns).index('mentions')] = '%s::jsonb[]'
-            data[list(columns).index('embeds')] = '%s::jsonb[]'
-            query = 'UPDATE discord_posts SET {updates} WHERE {conditions}'.format(
-                updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
-                conditions='server = %s AND channel = %s AND id = %s'
-            )
-            cursor.execute(query, list(post_data.values()) + list((server_id, channel_id, message_id,)))
+                # Update.
+                columns = post_data.keys()
+                data = ['%s'] * len(post_data.values())
+                data[list(columns).index('attachments')] = '%s::jsonb[]'
+                data[list(columns).index('mentions')] = '%s::jsonb[]'
+                data[list(columns).index('embeds')] = '%s::jsonb[]'
+                query = 'UPDATE discord_posts SET {updates} WHERE {conditions}'.format(
+                    updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
+                    conditions='server = %s AND channel = %s AND id = %s'
+                )
+                cursor.execute(query, list(post_data.values()) + list((server_id, channel_id, message_id,)))
 
-        return (updated_rows, first_message)
+    return (updated_rows, first_message)
