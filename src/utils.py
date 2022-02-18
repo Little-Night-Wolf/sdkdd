@@ -57,8 +57,6 @@ def replace_file_from_post(
         else:
             cursor.execute('SELECT * FROM posts')
 
-        updated_rows = cursor.rowcount
-        
         first_post = None
         for post_data in cursor:
             first_post = first_post or post_data
@@ -118,16 +116,15 @@ def replace_file_from_discord_message(
     with pg_connection.cursor() as cursor:
         if server_id and channel_id and message_id:
             cursor.execute('SELECT * FROM discord_posts WHERE server = %s AND channel = %s AND id = %s', (server_id, channel_id, message_id))
-        if server_id and message_id:
+        elif server_id and message_id:
             cursor.execute('SELECT * FROM discord_posts WHERE server = %s AND id = %s', (server_id, message_id))
         elif min_time and max_time:
             cursor.execute('SELECT * FROM discord_posts WHERE added >= %s AND added < %s', (min_time, max_time))
         else:
             cursor.execute('SELECT * FROM discord_posts')
-        messages = cursor.fetchall()
 
         first_message = None
-        for post_data in messages:
+        for post_data in cursor:
             first_message = first_message or post_data
             original_message_data = post_data
 
