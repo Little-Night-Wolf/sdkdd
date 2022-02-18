@@ -139,15 +139,20 @@ def replace_file_from_discord_message(
                 continue
 
             # Format.
-            for i in range(len(post_data['embeds'])):
-                post_data['embeds'][i] = json.dumps(post_data['embeds'][i])
+            post_data['author'] = json.dumps(post_data['author'])
             for i in range(len(post_data['attachments'])):
                 post_data['attachments'][i] = json.dumps(post_data['attachments'][i])
+            for i in range(len(post_data['mentions'])):
+                post_data['mentions'][i] = json.dumps(post_data['mentions'][i])
+            for i in range(len(post_data['embeds'])):
+                post_data['embeds'][i] = json.dumps(post_data['embeds'][i])
 
             # Update.
             columns = post_data.keys()
             data = ['%s'] * len(post_data.values())
-            data[list(columns).index('attachments')] = '%s::jsonb[]'  # attachments
+            data[list(columns).index('attachments')] = '%s::jsonb[]'
+            data[list(columns).index('mentions')] = '%s::jsonb[]'
+            data[list(columns).index('embeds')] = '%s::jsonb[]'
             query = 'UPDATE discord_posts SET {updates} WHERE {conditions}'.format(
                 updates=','.join([f'"{column}" = {data[i]}' for (i, column) in enumerate(columns)]),
                 conditions='service = %s AND "user" = %s AND id = %s'
